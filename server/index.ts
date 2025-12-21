@@ -1,9 +1,3 @@
-/**
- * Express APIサーバー
- *
- * 金融系業務アプリケーション用のバックエンドAPI
- */
-
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -21,8 +15,16 @@ app.use(
 );
 app.use(express.json());
 
+// デバッグ: すべてのリクエストをログ
+app.use((req, res, next) => {
+  console.log(`📨 ${req.method} ${req.path}`);
+  next();
+});
+
 // ルート
+console.log('🔧 Registering auth routes...');
 app.use('/api/auth', authRoutes);
+console.log('✅ Auth routes registered');
 
 // ヘルスチェック
 app.get('/api/health', (req, res) => {
@@ -47,6 +49,7 @@ app.use(
 
 // 404ハンドリング
 app.use('*', (req, res) => {
+  console.log(`❌ 404: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     success: false,
     message: 'Endpoint not found',
