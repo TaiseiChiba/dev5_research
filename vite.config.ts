@@ -4,6 +4,9 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    exclude: ['@prisma/client'],
+  },
   root: '.',
   build: {
     outDir: 'dist',

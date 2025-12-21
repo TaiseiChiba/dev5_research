@@ -13,7 +13,11 @@ import {
 import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL,
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
 });
 
 async function main() {
