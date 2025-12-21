@@ -8,8 +8,14 @@ import { PrismaClient } from '../../generated/prisma/index.js';
 
 const router = express.Router();
 const prisma = new PrismaClient({
-  accelerateUrl: process.env.DATABASE_URL,
+  datasources: {
+    db: {
+      url: process.env.DATABASE_URL,
+    },
+  },
 });
+
+console.log('🔵 Auth router module loaded');
 
 /**
  * ログイン API
