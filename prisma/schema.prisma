@@ -1,0 +1,211 @@
+// 金融系業務アプリケーション - Prismaスキーマ
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url = env("DATABASE_URL")
+}
+
+// 利用者テーブル
+model User {
+  userId      String   @id @map("user_id") @db.VarChar(50)
+  passwordHash String  @map("password_hash") @db.VarChar(255)
+  userRole    UserRole @map("user_role")
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // リレーション
+  createdTransactions  Transaction[] @relation("CreatedBy")
+  verifiedTransactions Transaction[] @relation("VerifiedBy")
+  confirmedTransactions Transaction[] @relation("ConfirmedBy")
+  workflowSteps        WorkflowHistory[]
+  auditLogs           AuditLog[]
+
+  @@index([userRole])
+  @@index([isActive])
+  @@map("users")
+}
+
+// 顧客テーブル
+model Customer {
+  customerId    String       @id @map("customer_id") @db.VarChar(50)
+  name          String       @db.VarChar(100)
+  phoneticName  String       @map("phonetic_name") @db.VarChar(100)
+  customerType  CustomerType @map("customer_type")
+  contactInfo   Json?        @map("contact_info")
+  isDeleted     Boolean      @default(false) @map("is_deleted")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  // リレーション
+  accounts Account[]
+
+  @@index([name])
+  @@index([phoneticName])
+  @@index([customerType])
+  @@index([isDeleted])
+  @@index([name, phoneticName, customerType])
+  @@map("customers")
+}
+
+// 口座テーブル
+model Account {
+  accountId     String        @id @map("account_id") @db.VarChar(50)
+  customerId    String        @map("customer_id") @db.VarChar(50)
+  accountNumber String        @unique @map("account_number") @db.VarChar(20)
+  accountType   AccountType   @map("account_type")
+  status        AccountStatus
+  balance       Decimal       @default(0.00) @db.Decimal(15, 2)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  // リレーション
+  customer              Customer      @relation(fields: [customerId], references: [customerId])
+  sourceTransactions    Transaction[] @relation("SourceAccount")
+  destinationTransactions Transaction[] @relation("DestinationAccount")
+
+  @@index([customerId])
+  @@index([accountNumber])
+  @@index([accountType])
+  @@index([status])
+  @@index([customerId, status])
+  @@map("accounts")
+}
+
+// 取引テーブル
+model Transaction {
+  transactionId        String            @id @map("transaction_id") @db.VarChar(50)
+  transactionType      TransactionType   @map("transaction_type")
+  sourceAccountId      String?           @map("source_account_id") @db.VarChar(50)
+  destinationAccountId String?           @map("destination_account_id") @db.VarChar(50)
+  amount               Decimal           @db.Decimal(15, 2)
+  description          String?
+  status               TransactionStatus
+  createdBy            String            @map("created_by") @db.VarChar(50)
+  verifiedBy           String?           @map("verified_by") @db.VarChar(50)
+  confirmedBy          String?           @map("confirmed_by") @db.VarChar(50)
+  createdAt            DateTime          @default(now()) @map("created_at")
+  verifiedAt           DateTime?         @map("verified_at")
+  confirmedAt          DateTime?         @map("confirmed_at")
+
+  // リレーション
+  sourceAccount      Account?          @relation("SourceAccount", fields: [sourceAccountId], references: [accountId])
+  destinationAccount Account?          @relation("DestinationAccount", fields: [destinationAccountId], references: [accountId])
+  createdByUser      User              @relation("CreatedBy", fields: [createdBy], references: [userId])
+  verifiedByUser     User?             @relation("VerifiedBy", fields: [verifiedBy], references: [userId])
+  confirmedByUser    User?             @relation("ConfirmedBy", fields: [confirmedBy], references: [userId])
+  workflowHistory    WorkflowHistory[]
+
+  @@index([status])
+  @@index([createdBy])
+  @@index([sourceAccountId])
+  @@index([destinationAccountId])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+// ワークフロー履歴テーブル
+model WorkflowHistory {
+  stepId        String            @id @map("step_id") @db.VarChar(50)
+  transactionId String            @map("transaction_id") @db.VarChar(50)
+  fromStatus    TransactionStatus? @map("from_status")
+  toStatus      TransactionStatus @map("to_status")
+  performedBy   String            @map("performed_by") @db.VarChar(50)
+  performedAt   DateTime          @default(now()) @map("performed_at")
+  comments      String?
+
+  // リレーション
+  transaction Transaction @relation(fields: [transactionId], references: [transactionId])
+  user        User        @relation(fields: [performedBy], references: [userId])
+
+  @@index([transactionId])
+  @@index([performedBy])
+  @@index([performedAt])
+  @@map("workflow_history")
+}
+
+// 監査ログテーブル
+model AuditLog {
+  logId      String     @id @map("log_id") @db.VarChar(50)
+  userId     String     @map("user_id") @db.VarChar(50)
+  action     String     @db.VarChar(50)
+  entityType EntityType @map("entity_type")
+  entityId   String     @map("entity_id") @db.VarChar(50)
+  oldValues  Json?      @map("old_values")
+  newValues  Json?      @map("new_values")
+  timestamp  DateTime   @default(now())
+
+  // リレーション
+  user User @relation(fields: [userId], references: [userId])
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([timestamp])
+  @@index([action])
+  @@map("audit_logs")
+}
+
+// Enums
+enum UserRole {
+  GENERAL_STAFF @map("general_staff")
+  ADMINISTRATOR @map("administrator")
+
+  @@map("user_role")
+}
+
+enum CustomerType {
+  INDIVIDUAL @map("individual")
+  CORPORATE  @map("corporate")
+
+  @@map("customer_type")
+}
+
+enum AccountType {
+  SAVINGS       @map("savings")
+  CHECKING      @map("checking")
+  FIXED_DEPOSIT @map("fixed_deposit")
+
+  @@map("account_type")
+}
+
+enum AccountStatus {
+  ACTIVE    @map("active")
+  CLOSED    @map("closed")
+  SUSPENDED @map("suspended")
+
+  @@map("account_status")
+}
+
+enum TransactionType {
+  TRANSFER   @map("transfer")
+  DEPOSIT    @map("deposit")
+  WITHDRAWAL @map("withdrawal")
+
+  @@map("transaction_type")
+}
+
+enum TransactionStatus {
+  PENDING_VERIFICATION      @map("pending_verification")
+  VERIFICATION_COMPLETE     @map("verification_complete")
+  ON_HOLD                   @map("on_hold")
+  RETURNED_FOR_CORRECTION   @map("returned_for_correction")
+  CONFIRMED                 @map("confirmed")
+  CANCELLED                 @map("cancelled")
+
+  @@map("transaction_status")
+}
+
+enum EntityType {
+  CUSTOMER    @map("customer")
+  ACCOUNT     @map("account")
+  TRANSACTION @map("transaction")
+  USER        @map("user")
+
+  @@map("entity_type")
+}

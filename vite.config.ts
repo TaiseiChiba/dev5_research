@@ -4,6 +4,9 @@ import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    exclude: ['@prisma/client'],
+  },
   root: '.',
   build: {
     outDir: 'dist',
@@ -18,8 +21,8 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
-  server: {
-    port: 3000,
-    open: true,
-  },
+  // server: {
+  //   port: 3000,
+  //   open: true,
+  // },
 });
