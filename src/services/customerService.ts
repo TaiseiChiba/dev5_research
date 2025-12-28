@@ -170,6 +170,7 @@ export class CustomerService {
         params.append('phoneticName', criteria.phoneticName);
       if (criteria.customerType)
         params.append('customerType', criteria.customerType);
+
       const requestUrl = `${API_BASE_URL}/customers/search?${params.toString()}`;
 
       const response = await fetch(requestUrl, {

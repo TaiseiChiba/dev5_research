@@ -57,11 +57,23 @@ router.get('/list', async (req, res) => {
 
 /**
  * 顧客検索api
- * /api/customer/search
+ * /api/customers/search
  */
 router.get('/search', async (req, res) => {
   try {
     const { customerId, name, phoneticName, customerType } = req.query;
+
+    // customerTypeを大文字に変換してPrismaのEnumに合わせる
+    let validCustomerType: CustomerType | undefined;
+    if (customerType) {
+      const typeStr = (customerType as string).toUpperCase();
+      if (typeStr === 'INDIVIDUAL') {
+        validCustomerType = CustomerType.INDIVIDUAL;
+      } else if (typeStr === 'CORPORATE') {
+        validCustomerType = CustomerType.CORPORATE;
+      }
+    }
+    console.log(validCustomerType);
 
     // 顧客一覧取得
     const customers = await prisma.customer.findMany({
@@ -69,7 +81,7 @@ router.get('/search', async (req, res) => {
         ...(customerId && { customerId: customerId as string }),
         ...(name && { name: name as string }),
         ...(phoneticName && { phoneticName: phoneticName as string }),
-        ...(customerType && { customerType: customerType as CustomerType }),
+        ...(validCustomerType && { customerType: validCustomerType }),
         isDeleted: false,
       },
       select: {
