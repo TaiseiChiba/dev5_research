@@ -29,10 +29,18 @@ const API_DELAY = 300;
 const SESSION_DURATION = 8 * 60 * 60 * 1000;
 
 /**
- * API Base URL
+ * API Base URL (from Vite env).
+ * Accepts either a root (http://host:port) or a path that already includes /api.
  */
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const RAW_API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+
+function buildApiUrl(path: string) {
+  // normalize base (no trailing slash)
+  const base = RAW_API_BASE.replace(/\/$/, '');
+  // ensure we have /api prefix
+  const withApi = base.endsWith('/api') ? base : `${base}/api`;
+  return `${withApi}/${path.replace(/^\//, '')}`;
+}
 
 /**
  * 認証サービスクラス
@@ -45,7 +53,12 @@ export class AuthService {
     await this.simulateApiDelay();
 
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const requestUrl = buildApiUrl('/auth/login');
+      console.debug('Login API request URL:', requestUrl, 'payload:', {
+        userId: request.userId,
+      });
+
+      const response = await fetch(requestUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -56,7 +69,15 @@ export class AuthService {
         }),
       });
 
-      const data = await response.json();
+      // log raw response for debugging (read as text first)
+      const rawText = await response.text();
+      console.debug('Login API response status:', response.status, 'body:', rawText);
+      let data: any = {};
+      try {
+        data = rawText ? JSON.parse(rawText) : {};
+      } catch (e) {
+        console.error('Failed to parse login API response as JSON:', e);
+      }
 
       if (!response.ok || !data.success) {
         return {
@@ -100,7 +121,9 @@ export class AuthService {
 
     try {
       // APIサーバーにログアウト通知
-      await fetch(`${API_BASE_URL}/auth/logout`, {
+      const logoutUrl = buildApiUrl('/auth/logout');
+      console.debug('Logout API request URL:', logoutUrl);
+      await fetch(logoutUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

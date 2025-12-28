@@ -116,29 +116,43 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
         password: formData.password,
       };
 
+      // 1. ログインAPIを呼び出し
       const result = await authService.login(loginRequest);
 
-      if (result.success && result.userRole) {
-        // 利用者区分の検証
-        if (result.userRole !== formData.userRole) {
-          setErrors({ general: '選択された利用者区分が正しくありません。' });
-          return;
-        }
-
-        // ログイン成功 - セッション情報を取得
-        const session = authService.getCurrentSession();
-        if (session) {
-          onLoginSuccess(session);
-        }
-      } else {
+      // 2. レスポンスの検証
+      if (!result.success) {
         setErrors({
           general: result.errorMessage || 'ログインに失敗しました。',
         });
+        return;
       }
+
+      if (!result.userRole) {
+        setErrors({ general: 'ユーザー区分情報が取得できませんでした。' });
+        return;
+      }
+
+      // 3. 利用者区分の検証
+      if (result.userRole !== formData.userRole) {
+        setErrors({ general: '選択された利用者区分が正しくありません。' });
+        return;
+      }
+
+      // 4. セッション情報を取得
+      const session = authService.getCurrentSession();
+
+      if (!session) {
+        setErrors({ general: 'セッション情報の取得に失敗しました。' });
+        return;
+      }
+
+      // 5. ログイン成功 - 親コンポーネントに通知
+      onLoginSuccess(session);
     } catch (error) {
       console.error('ログインエラー:', error);
       setErrors({ general: 'ログイン処理中にエラーが発生しました。' });
     } finally {
+      // エラー時にローディング解除
       setIsLoading(false);
     }
   };
