@@ -2,6 +2,7 @@ import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import authRoutes from './routes/auth.js';
+import custmersRoutes from './routes/customers.js';
 
 const app = express();
 const PORT = process.env.API_PORT || 3001;
@@ -24,6 +25,7 @@ app.use((req, res, next) => {
 // ルート
 console.log('🔧 Registering auth routes...');
 app.use('/api/auth', authRoutes);
+app.use('/api/customers', custmersRoutes);
 console.log('✅ Auth routes registered');
 
 // ヘルスチェック

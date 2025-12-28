@@ -87,7 +87,6 @@ const CustomerManagement: React.FC = () => {
         limit: itemsPerPage,
       });
 
-      setCustomers(result.data);
       setTotalPages(result.totalPages);
       setTotalCustomers(result.total);
     } catch (err) {
