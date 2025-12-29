@@ -145,6 +145,10 @@ const CustomerManagement: React.FC = () => {
     }
   };
 
+  const handleSearchDetails = (customerId: string) => {
+    // await customerService.searchCustomerDetails(customerId);
+  };
+
   /**
    * 検索条件をクリアする
    */

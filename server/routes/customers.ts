@@ -109,4 +109,42 @@ router.get('/search', async (req, res) => {
   }
 });
 
+/**
+ * 顧客詳細検索api
+ * /api/customers/search
+ */
+router.get('/details', async (req, res) => {
+  try {
+    const { customerId } = req.query;
+
+    // 顧客取得
+    const customer = await prisma.customer.findFirst({
+      where: {
+        ...(customerId && { customerId: customerId as string }),
+        isDeleted: false,
+      },
+      select: {
+        customerId: true,
+        name: true,
+        phoneticName: true,
+        contactInfo: true,
+        customerType: true,
+      },
+    });
+
+    // 成功レスポンス
+    res.json({
+      success: true,
+      customer: customer,
+      message: '顧客情報の取得に成功しました。',
+    });
+  } catch (error) {
+    console.error('Customer fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: '顧客情報の取得中にエラーが発生しました。',
+    });
+  }
+});
+
 export default router;

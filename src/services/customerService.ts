@@ -227,6 +227,32 @@ export class CustomerService {
   }
 
   /**
+   * 顧客照会
+   */
+  async searchCustomerDetails(customerId: string): Promise<Customer> {
+    try {
+      // クエリパラメータを作成
+      const params = new URLSearchParams();
+      params.append('customerId', customerId);
+
+      const requestUrl = `${API_BASE_URL}/customers/details?${params.toString()}`;
+
+      const response = await fetch(requestUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      return data.customer;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error; // エラーを再スロー
+    }
+  }
+
+  /**
    * API遅延をシミュレート
    */
   private async simulateApiDelay(): Promise<void> {
