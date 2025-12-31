@@ -3,11 +3,10 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Box, AppBar, Toolbar, Typography, Container } from '@mui/material';
-import LoginScreen from './components/LoginScreen';
-import MainApplication from './components/MainApplication';
-import { ServiceFactory } from './services/serviceFactory';
-import { UserSession } from './types/auth';
+import { Box, Typography } from '@mui/material';
+import AppRouter from './components/AppRouter.js';
+import { ServiceFactory } from './services/serviceFactory.js';
+import { UserSession } from './types/auth.js';
 
 const App: React.FC = () => {
   const [currentSession, setCurrentSession] = useState<UserSession | null>(
@@ -49,6 +48,10 @@ const App: React.FC = () => {
     setCurrentSession(null);
   };
 
+  const handleUserSwitch = (session: UserSession) => {
+    setCurrentSession(session);
+  };
+
   if (isLoading) {
     return (
       <Box
@@ -63,27 +66,12 @@ const App: React.FC = () => {
   }
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            金融系業務アプリケーション
-          </Typography>
-        </Toolbar>
-      </AppBar>
-
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        {currentSession ? (
-          <MainApplication
-            session={currentSession}
-            onLogout={handleLogout}
-            onUserSwitch={handleLoginSuccess}
-          />
-        ) : (
-          <LoginScreen onLoginSuccess={handleLoginSuccess} />
-        )}
-      </Container>
-    </Box>
+    <AppRouter
+      session={currentSession}
+      onLoginSuccess={handleLoginSuccess}
+      onLogout={handleLogout}
+      onUserSwitch={handleUserSwitch}
+    />
   );
 };
 
