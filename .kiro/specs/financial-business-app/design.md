@@ -538,6 +538,391 @@ CREATE TABLE audit_logs (
 3. **建設性**: 問題の解決方法や次のアクションを提示
 4. **セキュリティ**: 機密情報の漏洩を防ぐ適切な抽象化
 
+## ルーティング設計
+
+### URL構造とナビゲーション
+
+本アプリケーションは React Router DOM を使用したシングルページアプリケーション（SPA）として実装されます。以下にURL構造と画面の対応関係を定義します。
+
+#### URL階層構造
+
+```
+/                           # ダッシュボード（ログイン後のホーム画面）
+├── /login                  # ログイン画面
+├── /customers              # 顧客管理
+│   ├── /list              # 顧客一覧
+│   ├── /create            # 新規顧客登録
+│   ├── /:customerId       # 顧客詳細
+│   ├── /:customerId/edit  # 顧客編集
+│   └── /:customerId/accounts # 顧客別口座一覧
+├── /accounts               # 口座管理
+│   ├── /list              # 口座一覧
+│   ├── /create            # 新規口座開設
+│   ├── /:accountId        # 口座詳細
+│   └── /:accountId/edit   # 口座編集
+├── /transactions           # 取引管理
+│   ├── /input             # 取引入力
+│   ├── /verification      # 取引検証
+│   ├── /confirmation      # 取引確定
+│   ├── /history           # 取引履歴
+│   └── /:transactionId    # 取引詳細
+├── /workflow               # ワークフロー管理
+│   ├── /pending           # 検証待ち取引
+│   ├── /ready             # 確定準備完了取引
+│   └── /history           # ワークフロー履歴
+├── /settings               # 設定管理
+│   ├── /users             # ユーザー管理（管理者のみ）
+│   └── /system            # システム設定（管理者のみ）
+└── /error                  # エラーページ
+    ├── /401               # 認証エラー
+    ├── /404               # ページが見つからない
+    └── /500               # サーバーエラー
+```
+
+#### 画面とURLの対応表
+
+| 画面名           | URL                               | コンポーネント            | 認証要否 | 管理者限定 | 説明                         |
+| ---------------- | --------------------------------- | ------------------------- | -------- | ---------- | ---------------------------- |
+| ログイン画面     | `/login`                          | `LoginScreen`             | 不要     | -          | 利用者認証画面               |
+| ダッシュボード   | `/`                               | `Dashboard`               | 必要     | -          | ログイン後のホーム画面       |
+| 顧客管理トップ   | `/customers`                      | `CustomerManagement`      | 必要     | -          | 顧客管理メニュー             |
+| 顧客一覧         | `/customers/list`                 | `CustomerList`            | 必要     | -          | 顧客検索・一覧表示           |
+| 顧客詳細         | `/customers/:customerId`          | `CustomerDetail`          | 必要     | -          | 個別顧客の詳細情報           |
+| 顧客編集         | `/customers/:customerId/edit`     | `CustomerEdit`            | 必要     | -          | 顧客情報の編集               |
+| 新規顧客登録     | `/customers/create`               | `CustomerCreate`          | 必要     | -          | 新規顧客の登録               |
+| 顧客別口座一覧   | `/customers/:customerId/accounts` | `CustomerAccounts`        | 必要     | -          | 特定顧客の口座一覧           |
+| 口座管理トップ   | `/accounts`                       | `AccountManagement`       | 必要     | -          | 口座管理メニュー             |
+| 口座一覧         | `/accounts/list`                  | `AccountList`             | 必要     | -          | 口座検索・一覧表示           |
+| 口座詳細         | `/accounts/:accountId`            | `AccountDetail`           | 必要     | -          | 個別口座の詳細情報           |
+| 口座編集         | `/accounts/:accountId/edit`       | `AccountEdit`             | 必要     | -          | 口座情報の編集               |
+| 新規口座開設     | `/accounts/create`                | `AccountCreate`           | 必要     | -          | 新規口座の開設               |
+| 取引管理トップ   | `/transactions`                   | `TransactionManagement`   | 必要     | -          | 取引管理メニュー             |
+| 取引入力         | `/transactions/input`             | `TransactionInput`        | 必要     | -          | 新規取引の入力               |
+| 取引検証         | `/transactions/verification`      | `TransactionVerification` | 必要     | -          | 取引のダブルチェック         |
+| 取引確定         | `/transactions/confirmation`      | `TransactionConfirmation` | 必要     | ✓          | 取引の最終確定（管理者のみ） |
+| 取引履歴         | `/transactions/history`           | `TransactionHistory`      | 必要     | -          | 完了取引の履歴照会           |
+| 取引詳細         | `/transactions/:transactionId`    | `TransactionDetail`       | 必要     | -          | 個別取引の詳細情報           |
+| ワークフロー管理 | `/workflow`                       | `WorkflowManagement`      | 必要     | -          | ワークフロー管理メニュー     |
+| 検証待ち取引     | `/workflow/pending`               | `WorkflowPending`         | 必要     | -          | 検証待ち取引の一覧           |
+| 確定準備完了     | `/workflow/ready`                 | `WorkflowReady`           | 必要     | -          | 確定準備完了取引の一覧       |
+| ワークフロー履歴 | `/workflow/history`               | `WorkflowHistory`         | 必要     | -          | ワークフロー変更履歴         |
+| 設定管理         | `/settings`                       | `SettingsManagement`      | 必要     | -          | 設定管理メニュー             |
+| ユーザー管理     | `/settings/users`                 | `UserManagement`          | 必要     | ✓          | ユーザー管理（管理者のみ）   |
+| システム設定     | `/settings/system`                | `SystemConfig`            | 必要     | ✓          | システム設定（管理者のみ）   |
+| 認証エラー       | `/401`                            | `UnauthorizedError`       | 不要     | -          | 認証・認可エラー画面         |
+| ページ未発見     | `/404`                            | `NotFoundError`           | 不要     | -          | 存在しないページエラー       |
+| サーバーエラー   | `/500`                            | `ServerError`             | 不要     | -          | サーバーエラー画面           |
+
+#### ナビゲーション設計原則
+
+1. **階層的構造**: 機能ごとに論理的な階層を持つURL構造
+2. **RESTful設計**: リソース指向のURL設計（顧客、口座、取引）
+3. **パンくずナビゲーション**: 現在位置の明確化と上位階層への移動
+4. **ディープリンク対応**: 直接URLアクセスでの適切な画面表示
+5. **認証状態管理**: 未認証時の自動ログイン画面リダイレクト
+
+#### 画面遷移フロー
+
+```mermaid
+graph TD
+    A[ログイン画面] --> B[ダッシュボード]
+    B --> C[顧客管理]
+    B --> D[口座管理]
+    B --> E[取引管理]
+    B --> F[ワークフロー管理]
+    B --> G[設定管理]
+
+    C --> C1[顧客一覧]
+    C1 --> C2[顧客詳細]
+    C1 --> C3[新規顧客登録]
+    C2 --> C4[顧客編集]
+    C2 --> C5[顧客別口座一覧]
+
+    D --> D1[口座一覧]
+    D1 --> D2[口座詳細]
+    D1 --> D3[新規口座開設]
+    D2 --> D4[口座編集]
+
+    E --> E1[取引入力]
+    E --> E2[取引検証]
+    E --> E3[取引確定]
+    E --> E4[取引履歴]
+    E4 --> E5[取引詳細]
+
+    F --> F1[検証待ち取引]
+    F --> F2[確定準備完了]
+    F --> F3[ワークフロー履歴]
+
+    G --> G1[ユーザー管理]
+    G --> G2[システム設定]
+```
+
+#### 認証・認可制御
+
+- **認証ガード**: 保護されたルートへのアクセス時に認証状態を確認
+- **役割ベースアクセス**: 管理者限定機能への適切なアクセス制御
+- **セッション管理**: セッション期限切れ時の自動ログイン画面遷移
+- **リダイレクト**: ログイン成功後の元画面への自動遷移
+
+#### パフォーマンス最適化
+
+- **コード分割**: ルートレベルでの動的インポートによる初期読み込み最適化
+- **プリロード**: 予測される次画面のコンポーネント事前読み込み
+- **キャッシュ戦略**: 静的リソースとAPIレスポンスの適切なキャッシュ
+- **遅延読み込み**: 大きなコンポーネントの必要時読み込み
+
+## API設計
+
+### RESTful API エンドポイント一覧
+
+本システムは RESTful な設計原則に基づいたAPI構造を採用します。すべてのAPIエンドポイントは `/api` プレフィックスを持ちます。
+
+#### 基本情報
+
+- **ベースURL**: `http://localhost:3001/api`
+- **認証方式**: JWT Bearer Token（実装予定）
+- **データ形式**: JSON
+- **文字エンコーディング**: UTF-8
+
+#### 共通レスポンス形式
+
+```typescript
+interface ApiResponse<T = any> {
+  success: boolean;
+  data?: T;
+  message?: string;
+  timestamp?: string;
+  errors?: string[];
+}
+
+interface PaginatedResponse<T> extends ApiResponse<T[]> {
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+```
+
+### 1. 認証・認可 API
+
+| メソッド | エンドポイント           | 説明                 | 実装状況    |
+| -------- | ------------------------ | -------------------- | ----------- |
+| POST     | `/api/auth/login`        | ユーザーログイン     | ✅ 実装済み |
+| POST     | `/api/auth/logout`       | ユーザーログアウト   | ✅ 実装済み |
+| GET      | `/api/auth/user/:userId` | ユーザー情報取得     | ✅ 実装済み |
+| POST     | `/api/auth/refresh`      | トークンリフレッシュ | 🔄 実装予定 |
+| POST     | `/api/auth/switch-user`  | ユーザー切替         | 🔄 実装予定 |
+
+#### ログイン API 詳細
+
+```typescript
+// POST /api/auth/login
+interface LoginRequest {
+  userId: string;
+  password: string;
+}
+
+interface LoginResponse {
+  success: boolean;
+  user?: {
+    userId: string;
+    userRole: 'general_staff' | 'administrator';
+  };
+  token?: string; // 実装予定
+  message: string;
+}
+```
+
+### 2. 顧客管理 API
+
+| メソッド | エンドポイント               | 説明                    | 実装状況    |
+| -------- | ---------------------------- | ----------------------- | ----------- |
+| GET      | `/api/customers/list`        | 顧客一覧取得            | ✅ 実装済み |
+| GET      | `/api/customers/search`      | 顧客検索                | ✅ 実装済み |
+| GET      | `/api/customers/details`     | 顧客詳細取得            | ✅ 実装済み |
+| GET      | `/api/customers/:customerId` | 顧客詳細取得（RESTful） | 🔄 実装予定 |
+| POST     | `/api/customers`             | 新規顧客作成            | 🔄 実装予定 |
+| PUT      | `/api/customers/:customerId` | 顧客情報更新            | 🔄 実装予定 |
+| DELETE   | `/api/customers/:customerId` | 顧客削除（論理削除）    | 🔄 実装予定 |
+
+#### 顧客検索 API 詳細
+
+```typescript
+// GET /api/customers/search
+interface CustomerSearchParams {
+  customerId?: string;
+  name?: string;
+  phoneticName?: string;
+  customerType?: 'individual' | 'corporate';
+  page?: number;
+  limit?: number;
+}
+
+interface CustomerResponse {
+  customerId: string;
+  name: string;
+  phoneticName: string;
+  customerType: 'individual' | 'corporate';
+  contactInfo: {
+    email?: string;
+    phone?: string;
+    address?: string;
+    postalCode?: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+### 3. 口座管理 API
+
+| メソッド | エンドポイント                        | 説明           | 実装状況    |
+| -------- | ------------------------------------- | -------------- | ----------- |
+| GET      | `/api/accounts`                       | 口座一覧取得   | 🔄 実装予定 |
+| GET      | `/api/accounts/:accountId`            | 口座詳細取得   | 🔄 実装予定 |
+| GET      | `/api/customers/:customerId/accounts` | 顧客別口座一覧 | 🔄 実装予定 |
+| POST     | `/api/accounts`                       | 新規口座開設   | 🔄 実装予定 |
+| PUT      | `/api/accounts/:accountId`            | 口座情報更新   | 🔄 実装予定 |
+| DELETE   | `/api/accounts/:accountId`            | 口座解約       | 🔄 実装予定 |
+| GET      | `/api/accounts/:accountId/balance`    | 口座残高取得   | 🔄 実装予定 |
+
+#### 口座開設 API 詳細
+
+```typescript
+// POST /api/accounts
+interface AccountCreateRequest {
+  customerId: string;
+  accountType: 'savings' | 'checking' | 'fixed_deposit';
+  initialBalance?: number;
+}
+
+interface AccountResponse {
+  accountId: string;
+  customerId: string;
+  accountNumber: string;
+  accountType: 'savings' | 'checking' | 'fixed_deposit';
+  status: 'active' | 'closed' | 'suspended';
+  balance: number;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+### 4. 取引管理 API
+
+| メソッド | エンドポイント                             | 説明                 | 実装状況    |
+| -------- | ------------------------------------------ | -------------------- | ----------- |
+| GET      | `/api/transactions`                        | 取引一覧取得         | 🔄 実装予定 |
+| GET      | `/api/transactions/:transactionId`         | 取引詳細取得         | 🔄 実装予定 |
+| POST     | `/api/transactions`                        | 新規取引作成         | 🔄 実装予定 |
+| PUT      | `/api/transactions/:transactionId/verify`  | 取引検証             | 🔄 実装予定 |
+| PUT      | `/api/transactions/:transactionId/confirm` | 取引確定             | 🔄 実装予定 |
+| PUT      | `/api/transactions/:transactionId/cancel`  | 取引取消             | 🔄 実装予定 |
+| GET      | `/api/transactions/pending`                | 検証待ち取引一覧     | 🔄 実装予定 |
+| GET      | `/api/transactions/ready`                  | 確定準備完了取引一覧 | 🔄 実装予定 |
+| GET      | `/api/transactions/history`                | 取引履歴取得         | 🔄 実装予定 |
+
+#### 取引作成 API 詳細
+
+```typescript
+// POST /api/transactions
+interface TransactionCreateRequest {
+  type: 'transfer' | 'deposit' | 'withdrawal';
+  sourceAccountId?: string;
+  destinationAccountId?: string;
+  amount: number;
+  description: string;
+}
+
+interface TransactionResponse {
+  transactionId: string;
+  type: 'transfer' | 'deposit' | 'withdrawal';
+  sourceAccountId?: string;
+  destinationAccountId?: string;
+  amount: number;
+  description: string;
+  status:
+    | 'pending_verification'
+    | 'verification_complete'
+    | 'on_hold'
+    | 'returned_for_correction'
+    | 'confirmed'
+    | 'cancelled';
+  createdBy: string;
+  verifiedBy?: string;
+  confirmedBy?: string;
+  createdAt: string;
+  verifiedAt?: string;
+  confirmedAt?: string;
+}
+```
+
+### 5. ワークフロー管理 API
+
+| メソッド | エンドポイント                         | 説明                   | 実装状況    |
+| -------- | -------------------------------------- | ---------------------- | ----------- |
+| GET      | `/api/workflow/history/:transactionId` | ワークフロー履歴取得   | 🔄 実装予定 |
+| POST     | `/api/workflow/transition`             | 状態遷移実行           | 🔄 実装予定 |
+| GET      | `/api/workflow/rules`                  | ワークフロールール取得 | 🔄 実装予定 |
+
+### 6. システム管理 API
+
+| メソッド | エンドポイント       | 説明                           | 実装状況    |
+| -------- | -------------------- | ------------------------------ | ----------- |
+| GET      | `/api/health`        | ヘルスチェック                 | ✅ 実装済み |
+| GET      | `/api/users`         | ユーザー一覧取得（管理者のみ） | 🔄 実装予定 |
+| POST     | `/api/users`         | 新規ユーザー作成（管理者のみ） | 🔄 実装予定 |
+| PUT      | `/api/users/:userId` | ユーザー情報更新（管理者のみ） | 🔄 実装予定 |
+| GET      | `/api/audit-logs`    | 監査ログ取得（管理者のみ）     | 🔄 実装予定 |
+
+### エラーハンドリング
+
+#### HTTPステータスコード
+
+- **200 OK**: 正常処理完了
+- **201 Created**: リソース作成成功
+- **400 Bad Request**: 不正なリクエスト（バリデーションエラー）
+- **401 Unauthorized**: 認証エラー
+- **403 Forbidden**: 認可エラー（権限不足）
+- **404 Not Found**: リソースが見つからない
+- **409 Conflict**: データ競合エラー
+- **422 Unprocessable Entity**: ビジネスルール違反
+- **500 Internal Server Error**: サーバー内部エラー
+
+#### エラーレスポンス形式
+
+```typescript
+interface ErrorResponse {
+  success: false;
+  message: string;
+  errors?: {
+    field: string;
+    code: string;
+    message: string;
+  }[];
+  timestamp: string;
+}
+```
+
+### セキュリティ考慮事項
+
+1. **認証・認可**: JWT トークンベースの認証（実装予定）
+2. **入力検証**: すべての入力データの厳密な検証
+3. **SQLインジェクション対策**: Prisma ORMによる自動エスケープ
+4. **CORS設定**: 適切なオリジン制限
+5. **レート制限**: API呼び出し頻度の制限（実装予定）
+6. **監査ログ**: すべての重要操作の記録
+
+### API開発ガイドライン
+
+1. **RESTful設計**: リソース指向のURL設計
+2. **一貫性**: 統一されたレスポンス形式
+3. **バージョニング**: 将来的なAPI変更への対応
+4. **ドキュメント**: OpenAPI/Swagger仕様書の作成（実装予定）
+5. **テスト**: 各エンドポイントの包括的なテスト
+
 ## テスト戦略
 
 ### 二重テストアプローチ
