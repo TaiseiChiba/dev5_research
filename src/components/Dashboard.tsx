@@ -50,7 +50,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
       icon: <AccountBalanceOutlined />,
       title: '口座管理',
       description: '口座の開設、管理、残高照会機能',
-      action: null,
+      action: () => navigate(PATHS.ACCOUNT_LIST),
     },
     {
       icon: <ReceiptLongOutlined />,
