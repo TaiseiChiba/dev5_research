@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -45,8 +46,10 @@ import {
   CustomerSearchCriteria,
 } from '../types/customer';
 import { ServiceFactory } from '../services/serviceFactory';
+import { generatePath } from '../constants/paths';
 
 const CustomerManagement: React.FC = () => {
+  const navigate = useNavigate();
   // 状態管理
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
@@ -146,7 +149,14 @@ const CustomerManagement: React.FC = () => {
   };
 
   const handleSearchDetails = (customerId: string) => {
-    // await customerService.searchCustomerDetails(customerId);
+    navigate(generatePath.customerDetail(customerId));
+  };
+
+  /**
+   * 顧客編集画面への遷移
+   */
+  const handleEdit = (customerId: string) => {
+    navigate(generatePath.customerEdit(customerId));
   };
 
   /**
@@ -418,12 +428,22 @@ const CustomerManagement: React.FC = () => {
                     <TableCell align="center">
                       <Box display="flex" gap={0.5} justifyContent="center">
                         <Tooltip title="詳細表示">
-                          <IconButton size="small" color="primary">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() =>
+                              handleSearchDetails(customer.customerId)
+                            }
+                          >
                             <VisibilityIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="編集">
-                          <IconButton size="small" color="secondary">
+                          <IconButton
+                            size="small"
+                            color="secondary"
+                            onClick={() => handleEdit(customer.customerId)}
+                          >
                             <EditIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>

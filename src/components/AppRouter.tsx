@@ -11,6 +11,8 @@ import AppLayout from './AppLayout.js';
 import LoginScreen from './LoginScreen.js';
 import Dashboard from './Dashboard.js';
 import CustomerManagement from './CustomerManagement.js';
+import CustomerDetail from './CustomerDetail.js';
+import CustomerEdit from './CustomerEdit.js';
 import { NotFoundError, UnauthorizedError, ServerError } from './ErrorPages.js';
 import { UserSession } from '../types/auth.js';
 import { PATHS } from '../constants/paths.js';
@@ -74,6 +76,12 @@ const AppRouter: React.FC<AppRouterProps> = ({
               path={PATHS.CUSTOMER_LIST.slice(PATHS.CUSTOMERS.length + 1)}
               element={<CustomerManagement />}
             />
+            <Route
+              path="create"
+              element={<div>新規顧客登録（実装予定）</div>}
+            />
+            <Route path=":customerId" element={<CustomerDetail />} />
+            <Route path=":customerId/edit" element={<CustomerEdit />} />
           </Route>
 
           {/* 口座管理（実装予定） */}
