@@ -24,6 +24,12 @@ import {
 const API_DELAY = 300;
 
 /**
+ * API Base URL
+ */
+const API_BASE_URL =
+  import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+/**
  * 顧客サービスクラス
  */
 export class CustomerService {
@@ -155,44 +161,37 @@ export class CustomerService {
    * 顧客検索
    */
   async searchCustomers(criteria: CustomerSearchCriteria): Promise<Customer[]> {
-    await this.simulateApiDelay();
+    try {
+      // クエリパラメータを作成
+      const params = new URLSearchParams();
+      if (criteria.customerId) params.append('customerId', criteria.customerId);
+      if (criteria.name) params.append('name', criteria.name);
+      if (criteria.phoneticName)
+        params.append('phoneticName', criteria.phoneticName);
+      if (criteria.customerType)
+        params.append('customerType', criteria.customerType);
 
-    let customers = reviveDatesInArray(
-      getStorageData<Customer>('mockCustomers')
-    ).filter(c => !c.isDeleted);
+      const requestUrl = `${API_BASE_URL}/customers/search?${params.toString()}`;
 
-    // 検索条件を適用
-    if (criteria.customerId) {
-      customers = customers.filter(c =>
-        c.customerId.toLowerCase().includes(criteria.customerId!.toLowerCase())
-      );
+      const response = await fetch(requestUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      const customers = data.customers;
+
+      // ページネーション
+      const offset = criteria.offset || 0;
+      const limit = criteria.limit || 50;
+
+      return customers.slice(offset, offset + limit);
+    } catch (error) {
+      console.error('Login error:', error);
+      return [];
     }
-
-    if (criteria.name) {
-      customers = customers.filter(c =>
-        c.name.toLowerCase().includes(criteria.name!.toLowerCase())
-      );
-    }
-
-    if (criteria.phoneticName) {
-      customers = customers.filter(c =>
-        c.phoneticName
-          .toLowerCase()
-          .includes(criteria.phoneticName!.toLowerCase())
-      );
-    }
-
-    if (criteria.customerType) {
-      customers = customers.filter(
-        c => c.customerType === criteria.customerType
-      );
-    }
-
-    // ページネーション
-    const offset = criteria.offset || 0;
-    const limit = criteria.limit || 50;
-
-    return customers.slice(offset, offset + limit);
   }
 
   /**
@@ -204,20 +203,53 @@ export class CustomerService {
   }): Promise<PaginatedResult<Customer>> {
     await this.simulateApiDelay();
 
-    const allCustomers = reviveDatesInArray(
-      getStorageData<Customer>('mockCustomers')
-    ).filter(c => !c.isDeleted);
+    const requestUrl = `${API_BASE_URL}/customers/list`;
+
+    const response = await fetch(requestUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    console.log(response);
 
     const offset = (pagination.page - 1) * pagination.limit;
-    const customers = allCustomers.slice(offset, offset + pagination.limit);
+    const data = await response.json();
+    const customers = data.customers.slice(offset, offset + pagination.limit);
 
     return {
       data: customers,
-      total: allCustomers.length,
+      total: customers.length,
       page: pagination.page,
       limit: pagination.limit,
-      totalPages: Math.ceil(allCustomers.length / pagination.limit),
+      totalPages: Math.ceil(customers.length / pagination.limit),
     };
+  }
+
+  /**
+   * 顧客照会
+   */
+  async searchCustomerDetails(customerId: string): Promise<Customer> {
+    try {
+      // クエリパラメータを作成
+      const params = new URLSearchParams();
+      params.append('customerId', customerId);
+
+      const requestUrl = `${API_BASE_URL}/customers/details?${params.toString()}`;
+
+      const response = await fetch(requestUrl, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      return data.customer;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error; // エラーを再スロー
+    }
   }
 
   /**

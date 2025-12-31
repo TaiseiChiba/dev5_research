@@ -3,6 +3,7 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -27,8 +28,9 @@ import {
   PersonOutline,
   AdminPanelSettings,
 } from '@mui/icons-material';
-import { ServiceFactory } from '../services/serviceFactory';
-import { UserRole, LoginRequest, UserSession } from '../types/auth';
+import { ServiceFactory } from '../services/serviceFactory.js';
+import { UserRole, LoginRequest, UserSession } from '../types/auth.js';
+import { PATHS } from '../constants/paths.js';
 
 interface LoginScreenProps {
   onLoginSuccess: (session: UserSession) => void;
@@ -48,6 +50,13 @@ interface FormErrors {
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // ログイン前にアクセスしようとしたパスを取得
+  const from = (location.state as any)?.from || PATHS.DASHBOARD;
+  const expired = (location.state as any)?.expired;
+
   const [formData, setFormData] = useState<FormData>({
     userId: '',
     password: '',
@@ -148,6 +157,9 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
 
       // 5. ログイン成功 - 親コンポーネントに通知
       onLoginSuccess(session);
+
+      // 6. 元のページまたはダッシュボードにリダイレクト
+      navigate(from, { replace: true });
     } catch (error) {
       console.error('ログインエラー:', error);
       setErrors({ general: 'ログイン処理中にエラーが発生しました。' });
@@ -162,9 +174,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       display="flex"
       justifyContent="center"
       alignItems="center"
-      minHeight="60vh"
+      minHeight="100vh"
+      sx={{ bgcolor: 'grey.50', p: 2 }}
     >
       <Box sx={{ width: '100%', maxWidth: 600 }}>
+        {/* セッション期限切れの通知 */}
+        {expired && (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            セッションの有効期限が切れました。再度ログインしてください。
+          </Alert>
+        )}
+
         <Card elevation={4}>
           <CardContent sx={{ p: 4 }}>
             <Box display="flex" alignItems="center" mb={3}>
