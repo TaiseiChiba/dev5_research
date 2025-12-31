@@ -13,6 +13,7 @@ import Dashboard from './Dashboard.js';
 import CustomerManagement from './CustomerManagement.js';
 import CustomerDetail from './CustomerDetail.js';
 import CustomerEdit from './CustomerEdit.js';
+import CustomerCreate from './CustomerCreate.js';
 import { NotFoundError, UnauthorizedError, ServerError } from './ErrorPages.js';
 import { UserSession } from '../types/auth.js';
 import { PATHS } from '../constants/paths.js';
@@ -67,19 +68,10 @@ const AppRouter: React.FC<AppRouterProps> = ({
           <Route index element={<Dashboard session={session!} />} />
 
           {/* 顧客管理 */}
-          <Route path={PATHS.CUSTOMERS.slice(1)}>
-            <Route
-              index
-              element={<Navigate to={PATHS.CUSTOMER_LIST} replace />}
-            />
-            <Route
-              path={PATHS.CUSTOMER_LIST.slice(PATHS.CUSTOMERS.length + 1)}
-              element={<CustomerManagement />}
-            />
-            <Route
-              path="create"
-              element={<div>新規顧客登録（実装予定）</div>}
-            />
+          <Route path="customers">
+            <Route index element={<Navigate to="/customers/list" replace />} />
+            <Route path="list" element={<CustomerManagement />} />
+            <Route path="create" element={<CustomerCreate />} />
             <Route path=":customerId" element={<CustomerDetail />} />
             <Route path=":customerId/edit" element={<CustomerEdit />} />
           </Route>

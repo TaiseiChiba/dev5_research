@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>顧客詳細機能 - 最終テスト</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      button {
+        margin: 5px;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      .btn-primary {
+        background: #007bff;
+        color: white;
+      }
+      .btn-success {
+        background: #28a745;
+        color: white;
+      }
+      .btn-danger {
+        background: #dc3545;
+        color: white;
+      }
+      .result {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 3px;
+      }
+      .success {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+      }
+      .error {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        color: #721c24;
+      }
+      .info {
+        background: #d1ecf1;
+        border: 1px solid #bee5eb;
+        color: #0c5460;
+      }
+      input,
+      select {
+        margin: 5px;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+      }
+      .customer-card {
+        background: #f8f9fa;
+        padding: 15px;
+        margin: 10px 0;
+        border-radius: 5px;
+        border-left: 4px solid #007bff;
+      }
+      .status {
+        font-weight: bold;
+        padding: 2px 8px;
+        border-radius: 3px;
+        font-size: 0.8em;
+      }
+      .status-success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status-error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔍 顧客詳細機能 - 最終テスト</h1>
+
+    <div class="test-section">
+      <h2>📊 システム状態確認</h2>
+      <button class="btn-primary" onclick="checkSystemStatus()">
+        システム状態確認
+      </button>
+      <div id="systemStatus" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>📝 顧客登録テスト（一覧にリダイレクト）</h2>
+      <div>
+        <input
+          type="text"
+          id="newCustomerName"
+          placeholder="顧客名"
+          value="詳細テスト顧客"
+        />
+        <input
+          type="text"
+          id="newPhoneticName"
+          placeholder="カナ"
+          value="ショウサイテストコキャク"
+        />
+        <select id="newCustomerType">
+          <option value="INDIVIDUAL">個人</option>
+          <option value="CORPORATE">法人</option>
+        </select>
+        <input
+          type="email"
+          id="newEmail"
+          placeholder="メールアドレス"
+          value="detail-test@example.com"
+        />
+      </div>
+      <button class="btn-success" onclick="createCustomer()">顧客登録</button>
+      <div id="createResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>🔍 顧客詳細表示テスト</h2>
+      <div>
+        <input
+          type="text"
+          id="detailCustomerId"
+          placeholder="顧客番号"
+          value=""
+        />
+        <button class="btn-primary" onclick="getCustomerDetail()">
+          詳細表示
+        </button>
+        <button class="btn-primary" onclick="loadAvailableCustomers()">
+          利用可能な顧客を読み込み
+        </button>
+      </div>
+      <div id="detailResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>🗑️ 顧客削除テスト（一覧にリダイレクト）</h2>
+      <div>
+        <input
+          type="text"
+          id="deleteCustomerId"
+          placeholder="削除する顧客番号"
+          value=""
+        />
+        <button class="btn-danger" onclick="deleteCustomer()">顧客削除</button>
+      </div>
+      <div id="deleteResult" class="result"></div>
+    </div>
+
+    <script>
+      const API_BASE_URL = 'http://localhost:3001/api';
+
+      async function checkSystemStatus() {
+        const resultDiv = document.getElementById('systemStatus');
+
+        try {
+          // APIサーバーのヘルスチェック
+          const healthResponse = await fetch(`${API_BASE_URL}/health`);
+          const healthData = await healthResponse.json();
+
+          // 顧客一覧の取得テスト
+          const listResponse = await fetch(`${API_BASE_URL}/customers/list`);
+          const listData = await listResponse.json();
+
+          resultDiv.className = 'result success';
+          resultDiv.innerHTML = `
+                    <div class="status status-success">✅ システム正常</div>
+                    <strong>APIサーバー:</strong> ${healthData.status} (${healthData.timestamp})<br>
+                    <strong>データベース:</strong> ${listData.count}件の顧客データ<br>
+                    <strong>フロントエンド:</strong> ${window.location.href}<br>
+                    <strong>テスト時刻:</strong> ${new Date().toLocaleString('ja-JP')}
+                `;
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `
+                    <div class="status status-error">❌ システムエラー</div>
+                    <strong>エラー:</strong> ${error.message}<br>
+                    APIサーバーが起動していない可能性があります。
+                `;
+        }
+      }
+
+      async function createCustomer() {
+        const resultDiv = document.getElementById('createResult');
+
+        try {
+          const customerData = {
+            name: document.getElementById('newCustomerName').value,
+            phoneticName: document.getElementById('newPhoneticName').value,
+            customerType: document.getElementById('newCustomerType').value,
+            contactInfo: {
+              email: document.getElementById('newEmail').value,
+            },
+          };
+
+          const response = await fetch(`${API_BASE_URL}/customers`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(customerData),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `
+                        <div class="status status-success">✅ 登録成功</div>
+                        <div class="customer-card">
+                            <strong>顧客番号:</strong> ${data.customer.customerId}<br>
+                            <strong>顧客名:</strong> ${data.customer.name}<br>
+                            <strong>区分:</strong> ${data.customer.customerType}<br>
+                            <strong>メール:</strong> ${data.customer.contactInfo?.email || 'なし'}
+                        </div>
+                        <strong>💡 実際のアプリでは顧客一覧画面にリダイレクトされます</strong>
+                    `;
+
+            // 詳細テスト用に顧客番号を設定
+            document.getElementById('detailCustomerId').value =
+              data.customer.customerId;
+            document.getElementById('deleteCustomerId').value =
+              data.customer.customerId;
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<div class="status status-error">❌ 登録失敗</div>${data.message}`;
+          }
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<div class="status status-error">❌ エラー</div>${error.message}`;
+        }
+      }
+
+      async function loadAvailableCustomers() {
+        try {
+          const response = await fetch(`${API_BASE_URL}/customers/list`);
+          const data = await response.json();
+
+          if (data.success && data.customers.length > 0) {
+            // 最初の顧客を詳細テスト用に設定
+            document.getElementById('detailCustomerId').value =
+              data.customers[0].customerId;
+
+            const resultDiv = document.getElementById('detailResult');
+            resultDiv.className = 'result info';
+            resultDiv.innerHTML = `
+                        <strong>利用可能な顧客:</strong><br>
+                        ${data.customers
+                          .slice(0, 5)
+                          .map(
+                            c =>
+                              `${c.customerId}: ${c.name} (${c.customerType})`
+                          )
+                          .join('<br>')}
+                        ${data.customers.length > 5 ? '<br>...他' + (data.customers.length - 5) + '件' : ''}
+                    `;
+          }
+        } catch (error) {
+          console.error('Failed to load customers:', error);
+        }
+      }
+
+      async function getCustomerDetail() {
+        const resultDiv = document.getElementById('detailResult');
+        const customerId = document.getElementById('detailCustomerId').value;
+
+        if (!customerId) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML =
+            '<div class="status status-error">❌ エラー</div>顧客番号を入力してください';
+          return;
+        }
+
+        try {
+          const params = new URLSearchParams({ customerId });
+          const response = await fetch(
+            `${API_BASE_URL}/customers/details?${params}`
+          );
+          const data = await response.json();
+
+          if (data.success && data.customer) {
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `
+                        <div class="status status-success">✅ 詳細表示成功</div>
+                        <div class="customer-card">
+                            <strong>顧客番号:</strong> ${data.customer.customerId}<br>
+                            <strong>顧客名:</strong> ${data.customer.name}<br>
+                            <strong>カナ:</strong> ${data.customer.phoneticName}<br>
+                            <strong>区分:</strong> ${data.customer.customerType}<br>
+                            <strong>メール:</strong> ${data.customer.contactInfo?.email || 'なし'}<br>
+                            <strong>電話:</strong> ${data.customer.contactInfo?.phone || 'なし'}<br>
+                            <strong>住所:</strong> ${data.customer.contactInfo?.address || 'なし'}<br>
+                            <strong>登録日:</strong> ${new Date(data.customer.createdAt).toLocaleString('ja-JP')}<br>
+                            <strong>更新日:</strong> ${new Date(data.customer.updatedAt).toLocaleString('ja-JP')}
+                        </div>
+                        <strong>💡 実際のアプリでは顧客詳細画面が表示されます</strong>
+                    `;
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<div class="status status-error">❌ 詳細表示失敗</div>${data.message || '顧客が見つかりません'}`;
+          }
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<div class="status status-error">❌ エラー</div>${error.message}`;
+        }
+      }
+
+      async function deleteCustomer() {
+        const resultDiv = document.getElementById('deleteResult');
+        const customerId = document.getElementById('deleteCustomerId').value;
+
+        if (!customerId) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML =
+            '<div class="status status-error">❌ エラー</div>削除する顧客番号を入力してください';
+          return;
+        }
+
+        if (!confirm(`顧客 ${customerId} を削除してもよろしいですか？`)) {
+          return;
+        }
+
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/customers/${customerId}`,
+            {
+              method: 'DELETE',
+              headers: { 'Content-Type': 'application/json' },
+            }
+          );
+
+          const data = await response.json();
+
+          if (data.success) {
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `
+                        <div class="status status-success">✅ 削除成功</div>
+                        <strong>メッセージ:</strong> ${data.message}<br>
+                        <strong>削除時刻:</strong> ${new Date(data.timestamp).toLocaleString('ja-JP')}<br>
+                        <strong>💡 実際のアプリでは顧客一覧画面にリダイレクトされます</strong>
+                    `;
+
+            // 削除した顧客番号をクリア
+            document.getElementById('deleteCustomerId').value = '';
+            document.getElementById('detailCustomerId').value = '';
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<div class="status status-error">❌ 削除失敗</div>${data.message}`;
+          }
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<div class="status status-error">❌ エラー</div>${error.message}`;
+        }
+      }
+
+      // ページ読み込み時にシステム状態確認と利用可能な顧客を読み込み
+      window.onload = function () {
+        checkSystemStatus();
+        setTimeout(loadAvailableCustomers, 1000);
+      };
+    </script>
+  </body>
+</html>

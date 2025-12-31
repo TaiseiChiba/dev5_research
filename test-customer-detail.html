@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>顧客照会テスト</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ccc;
+      }
+      button {
+        margin: 5px;
+        padding: 10px;
+      }
+      .result {
+        margin: 10px 0;
+        padding: 10px;
+        background: #f5f5f5;
+      }
+      .success {
+        background: #d4edda;
+      }
+      .error {
+        background: #f8d7da;
+      }
+      input {
+        margin: 5px;
+        padding: 5px;
+        width: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>顧客照会テスト</h1>
+
+    <div class="test-section">
+      <h2>1. 顧客登録（リダイレクトテスト）</h2>
+      <div>
+        <input
+          type="text"
+          id="customerName"
+          placeholder="顧客名"
+          value="リダイレクトテスト顧客"
+        />
+        <input
+          type="text"
+          id="phoneticName"
+          placeholder="カナ"
+          value="リダイレクトテストコキャク"
+        />
+        <select id="customerType">
+          <option value="INDIVIDUAL">個人</option>
+          <option value="CORPORATE">法人</option>
+        </select>
+        <input
+          type="email"
+          id="email"
+          placeholder="メールアドレス"
+          value="redirect@test.com"
+        />
+      </div>
+      <button onclick="testCreateCustomer()">
+        顧客登録（一覧にリダイレクト）
+      </button>
+      <div id="createResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>2. 顧客照会テスト</h2>
+      <div>
+        <input
+          type="text"
+          id="customerIdForDetail"
+          placeholder="顧客番号"
+          value=""
+        />
+        <button onclick="testGetCustomerDetail()">顧客照会</button>
+      </div>
+      <div id="detailResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>3. 顧客一覧取得</h2>
+      <button onclick="testListCustomers()">顧客一覧取得</button>
+      <div id="listResult" class="result"></div>
+    </div>
+
+    <script>
+      const API_BASE_URL = 'http://localhost:3001/api';
+
+      async function testCreateCustomer() {
+        const resultDiv = document.getElementById('createResult');
+        try {
+          const customerData = {
+            name: document.getElementById('customerName').value,
+            phoneticName: document.getElementById('phoneticName').value,
+            customerType: document.getElementById('customerType').value,
+            contactInfo: {
+              email: document.getElementById('email').value,
+            },
+          };
+
+          const response = await fetch(`${API_BASE_URL}/customers`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(customerData),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `
+                        <strong>✅ 登録成功:</strong><br>
+                        顧客番号: ${data.customer.customerId}<br>
+                        顧客名: ${data.customer.name}<br>
+                        区分: ${data.customer.customerType}<br>
+                        <strong>→ 実際のアプリでは顧客一覧画面にリダイレクトされます</strong>
+                    `;
+
+            // 顧客番号を照会テストに自動入力
+            document.getElementById('customerIdForDetail').value =
+              data.customer.customerId;
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${data.message}`;
+          }
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${error.message}`;
+        }
+      }
+
+      async function testGetCustomerDetail() {
+        const resultDiv = document.getElementById('detailResult');
+        const customerId = document.getElementById('customerIdForDetail').value;
+
+        if (!customerId) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML =
+            '<strong>❌ エラー:</strong> 顧客番号を入力してください';
+          return;
+        }
+
+        try {
+          const params = new URLSearchParams();
+          params.append('customerId', customerId);
+
+          const response = await fetch(
+            `${API_BASE_URL}/customers/details?${params.toString()}`
+          );
+          const data = await response.json();
+
+          if (data.success && data.customer) {
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `
+                        <strong>✅ 照会成功:</strong><br>
+                        顧客番号: ${data.customer.customerId}<br>
+                        顧客名: ${data.customer.name}<br>
+                        カナ: ${data.customer.phoneticName}<br>
+                        区分: ${data.customer.customerType}<br>
+                        メール: ${data.customer.contactInfo?.email || 'なし'}<br>
+                        登録日: ${new Date(data.customer.createdAt).toLocaleString('ja-JP')}<br>
+                        <pre>${JSON.stringify(data.customer, null, 2)}</pre>
+                    `;
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${data.message || '顧客が見つかりません'}`;
+          }
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${error.message}`;
+        }
+      }
+
+      async function testListCustomers() {
+        const resultDiv = document.getElementById('listResult');
+        try {
+          const response = await fetch(`${API_BASE_URL}/customers/list`);
+          const data = await response.json();
+
+          if (data.success) {
+            resultDiv.className = 'result success';
+            let customerList = data.customers
+              .map(c => `${c.customerId}: ${c.name} (${c.customerType})`)
+              .join('<br>');
+
+            resultDiv.innerHTML = `
+                        <strong>✅ 成功:</strong> ${data.count}件の顧客が見つかりました<br><br>
+                        <strong>顧客一覧:</strong><br>
+                        ${customerList}
+                    `;
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${data.message}`;
+          }
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${error.message}`;
+        }
+      }
+    </script>
+  </body>
+</html>
