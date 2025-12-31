@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>顧客詳細デバッグ</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ccc;
+      }
+      button {
+        margin: 5px;
+        padding: 10px;
+      }
+      .result {
+        margin: 10px 0;
+        padding: 10px;
+        background: #f5f5f5;
+      }
+      .success {
+        background: #d4edda;
+      }
+      .error {
+        background: #f8d7da;
+      }
+      input {
+        margin: 5px;
+        padding: 5px;
+        width: 200px;
+      }
+      .log {
+        background: #f8f9fa;
+        padding: 10px;
+        margin: 10px 0;
+        font-family: monospace;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>顧客詳細デバッグ</h1>
+
+    <div class="test-section">
+      <h2>1. 環境確認</h2>
+      <button onclick="checkEnvironment()">環境確認</button>
+      <div id="envResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>2. 顧客一覧取得（顧客番号確認用）</h2>
+      <button onclick="listCustomers()">顧客一覧取得</button>
+      <div id="listResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>3. 顧客詳細取得テスト</h2>
+      <input
+        type="text"
+        id="customerIdInput"
+        placeholder="顧客番号"
+        value="CUST003"
+      />
+      <button onclick="getCustomerDetail()">顧客詳細取得</button>
+      <div id="detailResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>4. デバッグログ</h2>
+      <button onclick="clearLog()">ログクリア</button>
+      <div id="debugLog" class="log"></div>
+    </div>
+
+    <script>
+      const API_BASE_URL = 'http://localhost:3001/api';
+
+      // デバッグログ機能
+      const originalConsoleLog = console.log;
+      const originalConsoleError = console.error;
+
+      console.log = function (...args) {
+        originalConsoleLog.apply(console, args);
+        logToDiv('LOG: ' + args.join(' '));
+      };
+
+      console.error = function (...args) {
+        originalConsoleError.apply(console, args);
+        logToDiv('ERROR: ' + args.join(' '));
+      };
+
+      function logToDiv(message) {
+        const logDiv = document.getElementById('debugLog');
+        logDiv.textContent +=
+          new Date().toLocaleTimeString() + ' - ' + message + '\n';
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+
+      function clearLog() {
+        document.getElementById('debugLog').textContent = '';
+      }
+
+      function checkEnvironment() {
+        const resultDiv = document.getElementById('envResult');
+
+        const envInfo = {
+          userAgent: navigator.userAgent,
+          location: window.location.href,
+          apiBaseUrl: API_BASE_URL,
+          fetchAvailable: typeof fetch !== 'undefined',
+          windowDefined: typeof window !== 'undefined',
+          processDefined: typeof process !== 'undefined',
+        };
+
+        resultDiv.className = 'result success';
+        resultDiv.innerHTML = `
+                <strong>環境情報:</strong><br>
+                <pre>${JSON.stringify(envInfo, null, 2)}</pre>
+            `;
+
+        console.log('Environment check:', envInfo);
+      }
+
+      async function listCustomers() {
+        const resultDiv = document.getElementById('listResult');
+        console.log('Starting listCustomers...');
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/customers/list`);
+          console.log('List response status:', response.status);
+
+          const data = await response.json();
+          console.log('List response data:', data);
+
+          if (data.success) {
+            resultDiv.className = 'result success';
+            let customerList = data.customers
+              .map(c => `${c.customerId}: ${c.name} (${c.customerType})`)
+              .join('<br>');
+
+            resultDiv.innerHTML = `
+                        <strong>✅ 成功:</strong> ${data.count}件の顧客<br><br>
+                        ${customerList}
+                    `;
+
+            // 最初の顧客IDを詳細テストに設定
+            if (data.customers.length > 0) {
+              document.getElementById('customerIdInput').value =
+                data.customers[0].customerId;
+            }
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${data.message}`;
+          }
+        } catch (error) {
+          console.error('List customers error:', error);
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${error.message}`;
+        }
+      }
+
+      async function getCustomerDetail() {
+        const resultDiv = document.getElementById('detailResult');
+        const customerId = document.getElementById('customerIdInput').value;
+
+        console.log('Starting getCustomerDetail with customerId:', customerId);
+
+        if (!customerId) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML =
+            '<strong>❌ エラー:</strong> 顧客番号を入力してください';
+          return;
+        }
+
+        try {
+          const params = new URLSearchParams();
+          params.append('customerId', customerId);
+
+          const requestUrl = `${API_BASE_URL}/customers/details?${params.toString()}`;
+          console.log('Detail request URL:', requestUrl);
+
+          const response = await fetch(requestUrl);
+          console.log('Detail response status:', response.status);
+
+          const data = await response.json();
+          console.log('Detail response data:', data);
+
+          if (data.success && data.customer) {
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `
+                        <strong>✅ 詳細取得成功:</strong><br>
+                        顧客番号: ${data.customer.customerId}<br>
+                        顧客名: ${data.customer.name}<br>
+                        カナ: ${data.customer.phoneticName}<br>
+                        区分: ${data.customer.customerType}<br>
+                        メール: ${data.customer.contactInfo?.email || 'なし'}<br>
+                        登録日: ${new Date(data.customer.createdAt).toLocaleString('ja-JP')}<br>
+                        <details>
+                            <summary>詳細データ</summary>
+                            <pre>${JSON.stringify(data.customer, null, 2)}</pre>
+                        </details>
+                    `;
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${data.message || '顧客が見つかりません'}`;
+          }
+        } catch (error) {
+          console.error('Get customer detail error:', error);
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${error.message}`;
+        }
+      }
+
+      // ページ読み込み時に環境確認
+      window.onload = function () {
+        checkEnvironment();
+      };
+    </script>
+  </body>
+</html>

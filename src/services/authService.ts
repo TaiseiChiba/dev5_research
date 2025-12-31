@@ -17,6 +17,7 @@ import {
   generateId,
   reviveDates,
 } from './storageService.js';
+import { API_BASE_URL } from '../env.js';
 
 /**
  * API呼び出しをシミュレートする遅延
@@ -27,12 +28,6 @@ const API_DELAY = 300;
  * セッション有効期限（8時間）
  */
 const SESSION_DURATION = 8 * 60 * 60 * 1000;
-
-/**
- * API Base URL
- */
-const API_BASE_URL =
-  import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 /**
  * 認証サービスクラス

@@ -8,8 +8,8 @@ import { ContactInfo, BaseSearchCriteria } from './common.js';
  * 顧客タイプ
  */
 export enum CustomerType {
-  INDIVIDUAL = 'individual',
-  CORPORATE = 'corporate',
+  INDIVIDUAL = 'INDIVIDUAL',
+  CORPORATE = 'CORPORATE',
 }
 
 /**

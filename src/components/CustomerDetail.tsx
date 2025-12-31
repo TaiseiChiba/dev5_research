@@ -25,6 +25,11 @@ import {
   TableRow,
   IconButton,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -33,6 +38,7 @@ import {
   Business as BusinessIcon,
   AccountBalance as AccountBalanceIcon,
   Visibility as VisibilityIcon,
+  Delete as DeleteIcon,
 } from '@mui/icons-material';
 import { Customer, CustomerType } from '../types/customer';
 import { Account, AccountType, AccountStatus } from '../types/account';
@@ -48,6 +54,8 @@ const CustomerDetail: React.FC = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // サービス取得
   const customerService = ServiceFactory.getInstance().getCustomerService();
@@ -64,7 +72,9 @@ const CustomerDetail: React.FC = () => {
    * 顧客データと関連口座を読み込む
    */
   const loadCustomerData = async () => {
-    if (!customerId) return;
+    if (!customerId) {
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -73,6 +83,8 @@ const CustomerDetail: React.FC = () => {
       // 顧客詳細を取得
       const customerData = await customerService.getCustomer(customerId);
       setCustomer(customerData);
+
+      console.log(customerData);
 
       // 関連口座を取得
       const accountsData =
@@ -163,14 +175,21 @@ const CustomerDetail: React.FC = () => {
   /**
    * 日付をフォーマット
    */
-  const formatDate = (date: Date): string => {
+  const formatDate = (date: Date | string): string => {
+    const dateObj = date instanceof Date ? date : new Date(date);
+
+    // 無効な日付をチェック
+    if (isNaN(dateObj.getTime())) {
+      return '無効な日付';
+    }
+
     return new Intl.DateTimeFormat('ja-JP', {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
-    }).format(date);
+    }).format(dateObj);
   };
 
   /**
@@ -194,6 +213,55 @@ const CustomerDetail: React.FC = () => {
    */
   const handleAccountDetail = (accountId: string) => {
     navigate(generatePath.accountDetail(accountId));
+  };
+
+  /**
+   * 顧客削除の確認ダイアログを開く
+   * 要件: 9.1 - 破壊的な操作を実行する際、システムは処理を進める前に確認ダイアログを表示すること
+   */
+  const handleDeleteClick = () => {
+    setDeleteDialogOpen(true);
+  };
+
+  /**
+   * 顧客削除の確認ダイアログを閉じる
+   */
+  const handleDeleteCancel = () => {
+    setDeleteDialogOpen(false);
+  };
+
+  /**
+   * 顧客削除の実行
+   * 要件: 2.3 - 顧客を削除する際、システムはアクティブな口座が存在しないことを確認し、顧客を削除済みとしてマークすること
+   * 要件: 9.2 - 操作が正常に完了した際、システムは明確な成功メッセージを表示すること
+   * 要件: 9.3 - エラーが発生した際、システムは解決のためのガイダンス付きの具体的なエラーメッセージを表示すること
+   */
+  const handleDeleteConfirm = async () => {
+    if (!customerId) return;
+
+    setDeleting(true);
+    setError('');
+
+    try {
+      const result = await customerService.deleteCustomer(customerId);
+
+      if (result.success) {
+        // 削除成功 - 一覧画面に戻る
+        navigate(PATHS.CUSTOMER_LIST, {
+          state: { message: '顧客が正常に削除されました。' },
+        });
+      } else {
+        // 削除失敗 - エラーメッセージを表示
+        setError(result.message || '顧客の削除に失敗しました。');
+        setDeleteDialogOpen(false);
+      }
+    } catch (err) {
+      setError('顧客の削除に失敗しました。');
+      console.error('顧客削除エラー:', err);
+      setDeleteDialogOpen(false);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -260,14 +328,25 @@ const CustomerDetail: React.FC = () => {
             顧客詳細
           </Typography>
         </Box>
-        <Button
-          variant="contained"
-          startIcon={<EditIcon />}
-          onClick={handleEdit}
-          color="primary"
-        >
-          編集
-        </Button>
+        <Box display="flex" gap={1}>
+          <Button
+            variant="outlined"
+            startIcon={<DeleteIcon />}
+            onClick={handleDeleteClick}
+            color="error"
+            disabled={deleting}
+          >
+            削除
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<EditIcon />}
+            onClick={handleEdit}
+            color="primary"
+          >
+            編集
+          </Button>
+        </Box>
       </Box>
 
       {/* 顧客基本情報 */}
@@ -510,6 +589,55 @@ const CustomerDetail: React.FC = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* 削除確認ダイアログ */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteCancel}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title" color="error">
+          顧客削除の確認
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            この顧客を削除してもよろしいですか？
+            <br />
+            <br />
+            <strong>顧客番号:</strong> {customer?.customerId}
+            <br />
+            <strong>氏名・法人名:</strong> {customer?.name}
+            <br />
+            <br />
+            この操作は取り消すことができません。
+            {accounts.some(account => account.status === 'active') && (
+              <>
+                <br />
+                <br />
+                <Alert severity="warning" sx={{ mt: 2 }}>
+                  この顧客にはアクティブな口座があります。削除する前に、すべての口座を解約してください。
+                </Alert>
+              </>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDeleteCancel} disabled={deleting}>
+            キャンセル
+          </Button>
+          <Button
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            disabled={
+              deleting || accounts.some(account => account.status === 'active')
+            }
+          >
+            {deleting ? '削除中...' : '削除'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

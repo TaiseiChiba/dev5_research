@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>最終統合テスト - 顧客登録</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ccc;
+      }
+      button {
+        margin: 5px;
+        padding: 10px;
+      }
+      .result {
+        margin: 10px 0;
+        padding: 10px;
+        background: #f5f5f5;
+      }
+      .success {
+        background: #d4edda;
+      }
+      .error {
+        background: #f8d7da;
+      }
+      input,
+      select {
+        margin: 5px;
+        padding: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>最終統合テスト - 顧客登録</h1>
+
+    <div class="test-section">
+      <h2>顧客登録テスト（修正版）</h2>
+      <div>
+        <input
+          type="text"
+          id="customerName"
+          placeholder="顧客名"
+          value="統合テスト顧客"
+        />
+        <input
+          type="text"
+          id="phoneticName"
+          placeholder="カナ"
+          value="トウゴウテストコキャク"
+        />
+        <select id="customerType">
+          <option value="INDIVIDUAL">個人</option>
+          <option value="CORPORATE">法人</option>
+        </select>
+        <input
+          type="email"
+          id="email"
+          placeholder="メールアドレス"
+          value="integration@test.com"
+        />
+      </div>
+      <button onclick="testCreateCustomerFixed()">顧客登録（修正版）</button>
+      <div id="createResultFixed" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>登録された顧客の確認</h2>
+      <button onclick="testListCustomers()">顧客一覧取得</button>
+      <div id="listResult" class="result"></div>
+    </div>
+
+    <script>
+      const API_BASE_URL = 'http://localhost:3001/api';
+
+      async function testCreateCustomerFixed() {
+        const resultDiv = document.getElementById('createResultFixed');
+        try {
+          const customerData = {
+            name: document.getElementById('customerName').value,
+            phoneticName: document.getElementById('phoneticName').value,
+            customerType: document.getElementById('customerType').value,
+            contactInfo: {
+              email: document.getElementById('email').value,
+            },
+          };
+
+          console.log('送信データ:', customerData);
+
+          const response = await fetch(`${API_BASE_URL}/customers`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(customerData),
+          });
+
+          const data = await response.json();
+          console.log('レスポンス:', data);
+
+          if (data.success) {
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `
+                        <strong>✅ 成功:</strong><br>
+                        顧客番号: ${data.customer.customerId}<br>
+                        顧客名: ${data.customer.name}<br>
+                        区分: ${data.customer.customerType}<br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${data.message}`;
+          }
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${error.message}`;
+          console.error('エラー:', error);
+        }
+      }
+
+      async function testListCustomers() {
+        const resultDiv = document.getElementById('listResult');
+        try {
+          const response = await fetch(`${API_BASE_URL}/customers/list`);
+          const data = await response.json();
+
+          if (data.success) {
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `
+                        <strong>✅ 成功:</strong> ${data.count}件の顧客が見つかりました<br>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${data.message}`;
+          }
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<strong>❌ エラー:</strong> ${error.message}`;
+        }
+      }
+    </script>
+  </body>
+</html>

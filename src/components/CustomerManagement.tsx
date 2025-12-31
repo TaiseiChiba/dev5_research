@@ -6,7 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Box,
   Card,
@@ -39,6 +39,7 @@ import {
   Business as BusinessIcon,
   Visibility as VisibilityIcon,
   Edit as EditIcon,
+  Add as AddIcon,
 } from '@mui/icons-material';
 import {
   Customer,
@@ -46,14 +47,17 @@ import {
   CustomerSearchCriteria,
 } from '../types/customer';
 import { ServiceFactory } from '../services/serviceFactory';
-import { generatePath } from '../constants/paths';
+import { generatePath, PATHS } from '../constants/paths';
 
 const CustomerManagement: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+
   // 状態管理
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
   const [totalPages, setTotalPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalCustomers, setTotalCustomers] = useState(0);
@@ -76,6 +80,17 @@ const CustomerManagement: React.FC = () => {
   useEffect(() => {
     loadCustomers();
   }, [currentPage]);
+
+  // 成功メッセージの処理
+  useEffect(() => {
+    if (location.state?.message) {
+      setSuccessMessage(location.state.message);
+      // 状態をクリア
+      navigate(location.pathname, { replace: true });
+      // 3秒後にメッセージを消す
+      setTimeout(() => setSuccessMessage(''), 3000);
+    }
+  }, [location.state, navigate, location.pathname]);
 
   /**
    * 顧客一覧を読み込む
@@ -226,9 +241,24 @@ const CustomerManagement: React.FC = () => {
   return (
     <Box>
       {/* ページタイトル */}
-      <Typography variant="h4" gutterBottom color="primary">
-        顧客管理
-      </Typography>
+      <Box
+        display="flex"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={3}
+      >
+        <Typography variant="h4" color="primary">
+          顧客管理
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => navigate(PATHS.CUSTOMER_CREATE)}
+          color="primary"
+        >
+          新規顧客登録
+        </Button>
+      </Box>
 
       {/* 検索フォーム */}
       <Card elevation={2} sx={{ mb: 3 }}>
@@ -320,6 +350,13 @@ const CustomerManagement: React.FC = () => {
           </Grid>
         </CardContent>
       </Card>
+
+      {/* 成功メッセージ */}
+      {successMessage && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          {successMessage}
+        </Alert>
+      )}
 
       {/* エラー表示 */}
       {error && (

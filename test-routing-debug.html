@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ルーティングデバッグ</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      button {
+        margin: 5px;
+        padding: 10px 15px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        background: #007bff;
+        color: white;
+      }
+      .result {
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 3px;
+        background: #f8f9fa;
+      }
+      .error {
+        background: #f8d7da;
+        color: #721c24;
+      }
+      .success {
+        background: #d4edda;
+        color: #155724;
+      }
+      .log {
+        background: #f8f9fa;
+        padding: 10px;
+        margin: 10px 0;
+        font-family: monospace;
+        white-space: pre-wrap;
+        max-height: 300px;
+        overflow-y: auto;
+        border: 1px solid #ddd;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🔍 ルーティングデバッグ</h1>
+
+    <div class="test-section">
+      <h2>📊 現在の状況</h2>
+      <div id="currentStatus" class="result">
+        <strong>フロントエンドURL:</strong> <span id="frontendUrl"></span><br />
+        <strong>現在時刻:</strong> <span id="currentTime"></span><br />
+        <strong>ブラウザ:</strong> <span id="browserInfo"></span>
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>🌐 APIサーバー接続テスト</h2>
+      <button onclick="testApiConnection()">API接続テスト</button>
+      <div id="apiResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>🔗 ルーティングテスト</h2>
+      <p>
+        以下のリンクをクリックして、実際のReactアプリでルーティングが動作するかテストしてください：
+      </p>
+      <div>
+        <a
+          href="http://localhost:5174/"
+          target="_blank"
+          style="
+            margin: 5px;
+            padding: 10px;
+            background: #28a745;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+            display: inline-block;
+          "
+          >ダッシュボード</a
+        >
+        <a
+          href="http://localhost:5174/customers/list"
+          target="_blank"
+          style="
+            margin: 5px;
+            padding: 10px;
+            background: #17a2b8;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+            display: inline-block;
+          "
+          >顧客一覧</a
+        >
+        <a
+          href="http://localhost:5174/customers/CUST003"
+          target="_blank"
+          style="
+            margin: 5px;
+            padding: 10px;
+            background: #ffc107;
+            color: black;
+            text-decoration: none;
+            border-radius: 3px;
+            display: inline-block;
+          "
+          >顧客詳細 (CUST003)</a
+        >
+        <a
+          href="http://localhost:5174/customers/create"
+          target="_blank"
+          style="
+            margin: 5px;
+            padding: 10px;
+            background: #6f42c1;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+            display: inline-block;
+          "
+          >顧客登録</a
+        >
+      </div>
+    </div>
+
+    <div class="test-section">
+      <h2>📝 顧客データテスト</h2>
+      <button onclick="testCustomerData()">顧客データ取得テスト</button>
+      <div id="customerDataResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>🔍 デバッグログ</h2>
+      <button onclick="clearLog()">ログクリア</button>
+      <div id="debugLog" class="log"></div>
+    </div>
+
+    <script>
+      const API_BASE_URL = 'http://localhost:3001/api';
+
+      // デバッグログ機能
+      const originalConsoleLog = console.log;
+      const originalConsoleError = console.error;
+
+      console.log = function (...args) {
+        originalConsoleLog.apply(console, args);
+        logToDiv('LOG: ' + args.join(' '));
+      };
+
+      console.error = function (...args) {
+        originalConsoleError.apply(console, args);
+        logToDiv('ERROR: ' + args.join(' '));
+      };
+
+      function logToDiv(message) {
+        const logDiv = document.getElementById('debugLog');
+        logDiv.textContent +=
+          new Date().toLocaleTimeString() + ' - ' + message + '\n';
+        logDiv.scrollTop = logDiv.scrollHeight;
+      }
+
+      function clearLog() {
+        document.getElementById('debugLog').textContent = '';
+      }
+
+      function updateCurrentStatus() {
+        document.getElementById('frontendUrl').textContent =
+          window.location.href;
+        document.getElementById('currentTime').textContent =
+          new Date().toLocaleString('ja-JP');
+        document.getElementById('browserInfo').textContent = navigator.userAgent
+          .split(' ')
+          .slice(-2)
+          .join(' ');
+      }
+
+      async function testApiConnection() {
+        const resultDiv = document.getElementById('apiResult');
+        console.log('Testing API connection...');
+
+        try {
+          // ヘルスチェック
+          const healthResponse = await fetch(`${API_BASE_URL}/health`);
+          const healthData = await healthResponse.json();
+          console.log('Health check result:', healthData);
+
+          // 顧客一覧
+          const listResponse = await fetch(`${API_BASE_URL}/customers/list`);
+          const listData = await listResponse.json();
+          console.log('Customer list result:', listData);
+
+          resultDiv.className = 'result success';
+          resultDiv.innerHTML = `
+                    <strong>✅ API接続成功</strong><br>
+                    ヘルスチェック: ${healthData.status}<br>
+                    顧客データ: ${listData.count}件<br>
+                    APIサーバー: 正常稼働中
+                `;
+        } catch (error) {
+          console.error('API connection failed:', error);
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `
+                    <strong>❌ API接続失敗</strong><br>
+                    エラー: ${error.message}<br>
+                    APIサーバーが起動していない可能性があります
+                `;
+        }
+      }
+
+      async function testCustomerData() {
+        const resultDiv = document.getElementById('customerDataResult');
+        console.log('Testing customer data retrieval...');
+
+        try {
+          // 顧客一覧取得
+          const listResponse = await fetch(`${API_BASE_URL}/customers/list`);
+          const listData = await listResponse.json();
+
+          if (listData.success && listData.customers.length > 0) {
+            const firstCustomer = listData.customers[0];
+            console.log('First customer:', firstCustomer);
+
+            // 顧客詳細取得
+            const detailResponse = await fetch(
+              `${API_BASE_URL}/customers/details?customerId=${firstCustomer.customerId}`
+            );
+            const detailData = await detailResponse.json();
+            console.log('Customer detail:', detailData);
+
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `
+                        <strong>✅ 顧客データ取得成功</strong><br>
+                        <strong>一覧:</strong> ${listData.count}件の顧客<br>
+                        <strong>詳細テスト:</strong> ${firstCustomer.customerId} - ${firstCustomer.name}<br>
+                        <strong>詳細データ:</strong> ${detailData.success ? '取得成功' : '取得失敗'}<br>
+                        <details>
+                            <summary>詳細情報</summary>
+                            <pre>${JSON.stringify(detailData.customer, null, 2)}</pre>
+                        </details>
+                    `;
+          } else {
+            resultDiv.className = 'result error';
+            resultDiv.innerHTML = `
+                        <strong>❌ 顧客データなし</strong><br>
+                        データベースに顧客データが存在しません
+                    `;
+          }
+        } catch (error) {
+          console.error('Customer data test failed:', error);
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `
+                    <strong>❌ 顧客データ取得失敗</strong><br>
+                    エラー: ${error.message}
+                `;
+        }
+      }
+
+      // ページ読み込み時の初期化
+      window.onload = function () {
+        updateCurrentStatus();
+        testApiConnection();
+
+        // 5秒後に顧客データテストを実行
+        setTimeout(testCustomerData, 2000);
+
+        console.log('Routing debug page loaded');
+        console.log('Frontend URL:', window.location.href);
+        console.log('API Base URL:', API_BASE_URL);
+      };
+
+      // 1分ごとに状態を更新
+      setInterval(updateCurrentStatus, 60000);
+    </script>
+  </body>
+</html>
