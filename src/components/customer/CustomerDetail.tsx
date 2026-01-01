@@ -40,10 +40,10 @@ import {
   Visibility as VisibilityIcon,
   Delete as DeleteIcon,
 } from '@mui/icons-material';
-import { Customer, CustomerType } from '../types/customer';
-import { Account, AccountType, AccountStatus } from '../types/account';
-import { ServiceFactory } from '../services/serviceFactory';
-import { generatePath, PATHS } from '../constants/paths';
+import { Customer, CustomerType } from '../../types/customer';
+import { Account, AccountType, AccountStatus } from '../../types/account';
+import { ServiceFactory } from '../../services/common/serviceFactory';
+import { generatePath, PATHS } from '../../constants/paths';
 
 const CustomerDetail: React.FC = () => {
   const { customerId } = useParams<{ customerId: string }>();

@@ -4,8 +4,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
-import AppRouter from './components/AppRouter.js';
-import { ServiceFactory } from './services/serviceFactory.js';
+import AppRouter from './components/common/AppRouter.js';
+import { ServiceFactory } from './services/common/serviceFactory.js';
 import { UserSession } from './types/auth.js';
 
 const App: React.FC = () => {

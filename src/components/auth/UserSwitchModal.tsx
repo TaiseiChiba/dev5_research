@@ -20,8 +20,8 @@ import {
   SwitchAccountOutlined,
   PersonOutline,
 } from '@mui/icons-material';
-import { ServiceFactory } from '../services/serviceFactory';
-import { UserSession, SwitchUserRequest } from '../types/auth';
+import { ServiceFactory } from '../../services/common/serviceFactory.js';
+import { UserSession, SwitchUserRequest } from '../../types/auth.js';
 
 interface UserSwitchModalProps {
   open: boolean;

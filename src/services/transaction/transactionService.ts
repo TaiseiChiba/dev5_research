@@ -13,13 +13,13 @@ import {
   TransactionStatus,
   BaseApiResponse,
   Account,
-} from '../types/index.js';
+} from '../../types/index.js';
 import {
   getStorageData,
   setStorageData,
   generateId,
   reviveDatesInArray,
-} from './storageService.js';
+} from '../common/storageService.js';
 
 /**
  * API呼び出しをシミュレートする遅延

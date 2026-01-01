@@ -6,18 +6,18 @@
 
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import ProtectedRoute from './ProtectedRoute.js';
-import AppLayout from './AppLayout.js';
-import LoginScreen from './LoginScreen.js';
-import Dashboard from './Dashboard.js';
-import CustomerManagement from './CustomerManagement.js';
-import CustomerDetail from './CustomerDetail.js';
-import CustomerEdit from './CustomerEdit.js';
-import CustomerCreate from './CustomerCreate.js';
-import AccountList from './AccountList.js';
+import ProtectedRoute from '../auth/ProtectedRoute.js';
+import AppLayout from '../account/AppLayout.js';
+import LoginScreen from '../auth/LoginScreen.js';
+import Dashboard from '../workflow/Dashboard.js';
+import CustomerManagement from '../customer/CustomerManagement.js';
+import CustomerDetail from '../customer/CustomerDetail.js';
+import CustomerEdit from '../customer/CustomerEdit.js';
+import CustomerCreate from '../customer/CustomerCreate.js';
+import AccountList from '../account/AccountList.js';
 import { NotFoundError, UnauthorizedError, ServerError } from './ErrorPages.js';
-import { UserSession } from '../types/auth.js';
-import { PATHS } from '../constants/paths.js';
+import { UserSession } from '../../types/auth.js';
+import { PATHS } from '../../constants/paths.js';
 
 interface AppRouterProps {
   session: UserSession | null;

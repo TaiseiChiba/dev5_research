@@ -29,10 +29,10 @@ import {
   Cancel as CancelIcon,
   ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
-import { Customer, CustomerType, CustomerData } from '../types/customer';
-import { ContactInfo } from '../types/common';
-import { ServiceFactory } from '../services/serviceFactory';
-import { generatePath } from '../constants/paths';
+import { Customer, CustomerType, CustomerData } from '../../types/customer';
+import { ContactInfo } from '../../types/common';
+import { ServiceFactory } from '../../services/common/serviceFactory';
+import { generatePath } from '../../constants/paths';
 
 interface FormData {
   name: string;

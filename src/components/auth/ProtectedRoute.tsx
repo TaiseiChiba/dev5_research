@@ -6,9 +6,9 @@
 
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
-import { UserRole } from '../types/auth.js';
-import { ServiceFactory } from '../services/serviceFactory.js';
-import { PATHS } from '../constants/paths.js';
+import { UserRole } from '../../types/auth.js';
+import { ServiceFactory } from '../../services/common/serviceFactory.js';
+import { PATHS } from '../../constants/paths.js';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;

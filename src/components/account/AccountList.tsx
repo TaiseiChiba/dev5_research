@@ -47,9 +47,9 @@ import {
   AccountStatus,
   AccountSearchCriteria,
   Customer,
-} from '../types/index.js';
-import { ServiceFactory } from '../services/serviceFactory.js';
-import { generatePath, PATHS } from '../constants/paths.js';
+} from '../../types/index.js';
+import { ServiceFactory } from '../../services/common/serviceFactory.js';
+import { generatePath, PATHS } from '../../constants/paths.js';
 
 const AccountList: React.FC = () => {
   const navigate = useNavigate();
