@@ -9,7 +9,6 @@ import {
   AccountData,
   AccountBalance,
   AccountSearchCriteria,
-  AccountStatus,
   BaseApiResponse,
 } from '../types/index.js';
 
@@ -30,21 +29,74 @@ export class AccountService {
   async openAccount(accountData: AccountData): Promise<Account> {
     await this.simulateApiDelay();
 
-    const response = await fetch(this.baseUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(accountData),
-    });
+    try {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(accountData),
+      });
 
-    const result = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    if (!result.success) {
-      throw new Error(result.message || '口座開設に失敗しました。');
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || '口座開設に失敗しました。');
+      }
+
+      // 日付文字列をDateオブジェクトに変換
+      const account = {
+        ...result.account,
+        createdAt: new Date(result.account.createdAt),
+        updatedAt: new Date(result.account.updatedAt),
+        balance: parseFloat(result.account.balance), // Decimal型を数値に変換
+      };
+
+      return account;
+    } catch (error) {
+      console.error('Account creation error:', error);
+      throw new Error('口座開設に失敗しました。サーバーに接続できません。');
     }
+  }
 
-    return result.account;
+  /**
+   * 口座一覧取得
+   */
+  async listAccounts(): Promise<Account[]> {
+    await this.simulateApiDelay();
+
+    try {
+      const response = await fetch(`${this.baseUrl}/list`);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || '口座一覧の取得に失敗しました。');
+      }
+
+      // 日付文字列をDateオブジェクトに変換
+      const accounts = result.accounts.map((account: any) => ({
+        ...account,
+        createdAt: new Date(account.createdAt),
+        updatedAt: new Date(account.updatedAt),
+        balance: parseFloat(account.balance), // Decimal型を数値に変換
+      }));
+
+      return accounts;
+    } catch (error) {
+      console.error('Account list error:', error);
+      throw new Error(
+        '口座一覧の取得に失敗しました。サーバーに接続できません。'
+      );
+    }
   }
 
   /**
@@ -56,21 +108,38 @@ export class AccountService {
   ): Promise<Account> {
     await this.simulateApiDelay();
 
-    const response = await fetch(`${this.baseUrl}/${accountId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(updates),
-    });
+    try {
+      const response = await fetch(`${this.baseUrl}/${accountId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(updates),
+      });
 
-    const result = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    if (!result.success) {
-      throw new Error(result.message || '口座更新に失敗しました。');
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || '口座更新に失敗しました。');
+      }
+
+      // 日付文字列をDateオブジェクトに変換
+      const account = {
+        ...result.account,
+        createdAt: new Date(result.account.createdAt),
+        updatedAt: new Date(result.account.updatedAt),
+        balance: parseFloat(result.account.balance), // Decimal型を数値に変換
+      };
+
+      return account;
+    } catch (error) {
+      console.error('Account update error:', error);
+      throw new Error('口座更新に失敗しました。サーバーに接続できません。');
     }
-
-    return result.account;
   }
 
   /**
@@ -79,17 +148,30 @@ export class AccountService {
   async closeAccount(accountId: string): Promise<BaseApiResponse> {
     await this.simulateApiDelay();
 
-    const response = await fetch(`${this.baseUrl}/${accountId}`, {
-      method: 'DELETE',
-    });
+    try {
+      const response = await fetch(`${this.baseUrl}/${accountId}`, {
+        method: 'DELETE',
+      });
 
-    const result = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    return {
-      success: result.success,
-      message: result.message,
-      timestamp: result.timestamp || new Date().toISOString(),
-    };
+      const result = await response.json();
+
+      return {
+        success: result.success,
+        message: result.message,
+        timestamp: result.timestamp || new Date().toISOString(),
+      };
+    } catch (error) {
+      console.error('Account closure error:', error);
+      return {
+        success: false,
+        message: '口座解約に失敗しました。サーバーに接続できません。',
+        timestamp: new Date().toISOString(),
+      };
+    }
   }
 
   /**
@@ -98,16 +180,34 @@ export class AccountService {
   async getAccount(accountId: string): Promise<Account> {
     await this.simulateApiDelay();
 
-    const response = await fetch(
-      `${this.baseUrl}/details?accountId=${accountId}`
-    );
-    const result = await response.json();
+    try {
+      const response = await fetch(
+        `${this.baseUrl}/details?accountId=${accountId}`
+      );
 
-    if (!result.success) {
-      throw new Error(result.message || '口座が見つかりません。');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || '口座が見つかりません。');
+      }
+
+      // 日付文字列をDateオブジェクトに変換
+      const account = {
+        ...result.account,
+        createdAt: new Date(result.account.createdAt),
+        updatedAt: new Date(result.account.updatedAt),
+        balance: parseFloat(result.account.balance), // Decimal型を数値に変換
+      };
+
+      return account;
+    } catch (error) {
+      console.error('Account get error:', error);
+      throw new Error('口座の取得に失敗しました。サーバーに接続できません。');
     }
-
-    return result.account;
   }
 
   /**
@@ -116,34 +216,34 @@ export class AccountService {
   async getAccountsByCustomer(customerId: string): Promise<Account[]> {
     await this.simulateApiDelay();
 
-    const response = await fetch(`${this.baseUrl}/customer/${customerId}`);
-    const result = await response.json();
+    try {
+      const response = await fetch(`${this.baseUrl}/customer/${customerId}`);
 
-    if (!result.success) {
-      throw new Error(result.message || '口座の取得に失敗しました。');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || '口座の取得に失敗しました。');
+      }
+
+      // 日付文字列をDateオブジェクトに変換
+      const accounts = result.accounts.map((account: any) => ({
+        ...account,
+        createdAt: new Date(account.createdAt),
+        updatedAt: new Date(account.updatedAt),
+        balance: parseFloat(account.balance), // Decimal型を数値に変換
+      }));
+
+      return accounts;
+    } catch (error) {
+      console.error('Customer accounts error:', error);
+      throw new Error(
+        '顧客の口座取得に失敗しました。サーバーに接続できません。'
+      );
     }
-
-    return result.accounts;
-  }
-
-  /**
-   * 口座一覧検索
-   */
-  async accountsList(pagination: {
-    page: number;
-    limit: number;
-  }): Promise<Account[]> {
-    const response = await fetch(`${this.baseUrl}/list`);
-    const data = await response.json();
-
-    if (!data.success) {
-      throw new Error(data.message || '口座一覧検索に失敗しました。');
-    }
-
-    const offset = (pagination.page - 1) * pagination.limit;
-    const accounts = data.accounts.slice(offset, offset + pagination.limit);
-
-    return accounts;
   }
 
   /**
@@ -152,28 +252,46 @@ export class AccountService {
   async searchAccounts(criteria: AccountSearchCriteria): Promise<Account[]> {
     await this.simulateApiDelay();
 
-    const params = new URLSearchParams();
+    try {
+      const params = new URLSearchParams();
 
-    if (criteria.accountId) params.append('accountId', criteria.accountId);
-    if (criteria.customerId) params.append('customerId', criteria.customerId);
-    if (criteria.accountNumber)
-      params.append('accountNumber', criteria.accountNumber);
-    if (criteria.accountType)
-      params.append('accountType', criteria.accountType);
-    if (criteria.status) params.append('status', criteria.status);
-    if (criteria.offset) params.append('offset', criteria.offset.toString());
-    if (criteria.limit) params.append('limit', criteria.limit.toString());
+      if (criteria.accountId) params.append('accountId', criteria.accountId);
+      if (criteria.customerId) params.append('customerId', criteria.customerId);
+      if (criteria.accountNumber)
+        params.append('accountNumber', criteria.accountNumber);
+      if (criteria.accountType)
+        params.append('accountType', criteria.accountType);
+      if (criteria.status) params.append('status', criteria.status);
+      if (criteria.offset) params.append('offset', criteria.offset.toString());
+      if (criteria.limit) params.append('limit', criteria.limit.toString());
 
-    console.log(params);
+      const response = await fetch(
+        `${this.baseUrl}/search?${params.toString()}`
+      );
 
-    const response = await fetch(`${this.baseUrl}/search?${params.toString()}`);
-    const result = await response.json();
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    if (!result.success) {
-      throw new Error(result.message || '口座検索に失敗しました。');
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || '口座検索に失敗しました。');
+      }
+
+      // 日付文字列をDateオブジェクトに変換
+      const accounts = result.accounts.map((account: any) => ({
+        ...account,
+        createdAt: new Date(account.createdAt),
+        updatedAt: new Date(account.updatedAt),
+        balance: parseFloat(account.balance), // Decimal型を数値に変換
+      }));
+
+      return accounts;
+    } catch (error) {
+      console.error('Account search error:', error);
+      throw new Error('口座検索に失敗しました。サーバーに接続できません。');
     }
-
-    return result.accounts;
   }
 
   /**
@@ -182,14 +300,26 @@ export class AccountService {
   async getAccountBalance(accountId: string): Promise<AccountBalance> {
     await this.simulateApiDelay();
 
-    const response = await fetch(`${this.baseUrl}/${accountId}/balance`);
-    const result = await response.json();
+    try {
+      const response = await fetch(`${this.baseUrl}/${accountId}/balance`);
 
-    if (!result.success) {
-      throw new Error(result.message || '口座残高の取得に失敗しました。');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      if (!result.success) {
+        throw new Error(result.message || '口座残高の取得に失敗しました。');
+      }
+
+      return result.balance;
+    } catch (error) {
+      console.error('Account balance error:', error);
+      throw new Error(
+        '口座残高の取得に失敗しました。サーバーに接続できません。'
+      );
     }
-
-    return result.balance;
   }
 
   /**

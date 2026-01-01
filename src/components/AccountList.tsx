@@ -139,10 +139,22 @@ const AccountList: React.FC = () => {
    */
   const loadAccounts = async () => {
     try {
-      const searchResults = await accountService.accountsList({
-        page: currentPage,
-        limit: itemsPerPage,
-      });
+      // 検索条件がない場合は全件取得、ある場合は検索
+      const hasSearchCriteria = Object.values(searchCriteria).some(
+        value => value !== undefined && value !== ''
+      );
+
+      let searchResults: Account[];
+
+      if (hasSearchCriteria) {
+        searchResults = await accountService.searchAccounts({
+          ...searchCriteria,
+          limit: itemsPerPage,
+          offset: (currentPage - 1) * itemsPerPage,
+        });
+      } else {
+        searchResults = await accountService.listAccounts();
+      }
 
       setAccounts(searchResults);
       setTotalPages(Math.ceil(searchResults.length / itemsPerPage));
@@ -328,14 +340,26 @@ const AccountList: React.FC = () => {
   /**
    * 日付をフォーマット
    */
-  const formatDate = (date: Date): string => {
-    return new Intl.DateTimeFormat('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
+  const formatDate = (date: Date | string): string => {
+    try {
+      const dateObj = typeof date === 'string' ? new Date(date) : date;
+
+      // 無効な日付をチェック
+      if (isNaN(dateObj.getTime())) {
+        return '無効な日付';
+      }
+
+      return new Intl.DateTimeFormat('ja-JP', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+      }).format(dateObj);
+    } catch (error) {
+      console.error('Date formatting error:', error, 'Date value:', date);
+      return '日付エラー';
+    }
   };
 
   return (
