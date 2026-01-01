@@ -280,8 +280,6 @@ const AccountList: React.FC = () => {
         return '当座預金';
       case AccountType.FIXED_DEPOSIT:
         return '定期預金';
-      case AccountType.LOAN:
-        return 'ローン';
       default:
         return type;
     }
@@ -463,7 +461,6 @@ const AccountList: React.FC = () => {
                   <MenuItem value={AccountType.FIXED_DEPOSIT}>
                     定期預金
                   </MenuItem>
-                  <MenuItem value={AccountType.LOAN}>ローン</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
