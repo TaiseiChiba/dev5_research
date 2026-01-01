@@ -315,14 +315,20 @@ router.post('/', async (req, res) => {
 
     // 口座番号を生成（CUST部分を除いた数字 + タイムスタンプ + ランダム）
     const customerNum = customerId.replace('CUST', '');
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.floor(Math.random() * 100)
+    const accountTimestamp = Date.now().toString().slice(-6);
+    const accountRandom = Math.floor(Math.random() * 100)
       .toString()
       .padStart(2, '0');
-    const accountNumber = `${customerNum}-${timestamp}-${random}`;
+    const accountNumber = `${customerNum}-${accountTimestamp}-${accountRandom}`;
 
-    // 口座IDを生成
-    const accountId = `ACC${Date.now()}`;
+    // 口座IDを生成（50文字制限に対応）
+    const idTimestamp = Date.now().toString().slice(-8); // 最後の8桁のみ使用
+    const idRandom = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
+    const accountId = `ACC${idTimestamp}${idRandom}`; // ACC + 8桁 + 3桁 = 14文字
+
+    console.log(accountId);
 
     // 口座作成
     const account = await prisma.account.create({

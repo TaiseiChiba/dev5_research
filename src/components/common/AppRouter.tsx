@@ -17,6 +17,7 @@ import CustomerCreate from '../customer/CustomerCreate.js';
 import AccountList from '../account/AccountList.js';
 import AccountDetail from '../account/AccountDetail.js';
 import AccountEdit from '../account/AccountEdit.js';
+import AccountCreate from '../account/AccountCreate.js';
 import { NotFoundError, UnauthorizedError, ServerError } from './ErrorPages.js';
 import { UserSession } from '../../types/auth.js';
 import { PATHS } from '../../constants/paths.js';
@@ -83,6 +84,7 @@ const AppRouter: React.FC<AppRouterProps> = ({
           <Route path="accounts">
             <Route index element={<Navigate to="/accounts/list" replace />} />
             <Route path="list" element={<AccountList />} />
+            <Route path="create" element={<AccountCreate />} />
             <Route path=":accountId" element={<AccountDetail />} />
             <Route path=":accountId/edit" element={<AccountEdit />} />
             {/* 他の口座管理ルートは後で実装 */}
