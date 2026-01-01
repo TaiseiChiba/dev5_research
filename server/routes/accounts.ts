@@ -313,16 +313,33 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // 口座番号を生成（CUST部分を除いた数字 + タイムスタンプ + ランダム）
-    const customerNum = customerId.replace('CUST', '');
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.floor(Math.random() * 100)
+    // 口座番号を生成（顧客番号の後ろ6桁 + タイムスタンプ後ろ6桁 + ランダム2桁）
+    const customerNum = customerId.replace('CUST', '').slice(-6); // 最後の6桁のみ使用
+    const accountTimestamp = Date.now().toString().slice(-6);
+    const accountRandom = Math.floor(Math.random() * 100)
       .toString()
       .padStart(2, '0');
-    const accountNumber = `${customerNum}-${timestamp}-${random}`;
+    const accountNumber = `${customerNum}-${accountTimestamp}-${accountRandom}`; // 6-6-2 = 16文字
 
-    // 口座IDを生成
-    const accountId = `ACC${Date.now()}`;
+    // 口座IDを生成（50文字制限に対応）
+    const idTimestamp = Date.now().toString().slice(-8); // 最後の8桁のみ使用
+    const idRandom = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, '0');
+    const accountId = `ACC${idTimestamp}${idRandom}`; // ACC + 8桁 + 3桁 = 14文字
+
+    console.log('Debug - Field lengths:');
+    console.log(`accountId: ${accountId} (${accountId.length} chars)`);
+    console.log(`customerId: ${customerId} (${customerId.length} chars)`);
+    console.log(
+      `accountNumber: ${accountNumber} (${accountNumber.length} chars)`
+    );
+    console.log(
+      `accountType: ${validAccountType} (${validAccountType.length} chars)`
+    );
+    console.log(
+      `status: ${AccountStatus.ACTIVE} (${AccountStatus.ACTIVE.length} chars)`
+    );
 
     // 口座作成
     const account = await prisma.account.create({
