@@ -12,12 +12,6 @@ import {
   AccountStatus,
   BaseApiResponse,
 } from '../types/index.js';
-import {
-  getStorageData,
-  setStorageData,
-  generateId,
-  reviveDatesInArray,
-} from './storageService.js';
 
 /**
  * API呼び出しをシミュレートする遅延
@@ -28,44 +22,29 @@ const API_DELAY = 300;
  * 口座サービスクラス
  */
 export class AccountService {
+  private baseUrl = '/api/accounts';
+
   /**
    * 口座開設
    */
   async openAccount(accountData: AccountData): Promise<Account> {
     await this.simulateApiDelay();
 
-    // 顧客の存在確認
-    const customers = getStorageData('mockCustomers');
-    const customer = customers.find(
-      (c: any) => c.customerId === accountData.customerId && !c.isDeleted
-    );
+    const response = await fetch(this.baseUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(accountData),
+    });
 
-    if (!customer) {
-      throw new Error('指定された顧客が見つかりません。');
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '口座開設に失敗しました。');
     }
 
-    const accounts = reviveDatesInArray(
-      getStorageData<Account>('mockAccounts')
-    );
-
-    // 口座番号生成（簡易版）
-    const accountNumber = this.generateAccountNumber(accountData.customerId);
-
-    const newAccount: Account = {
-      accountId: generateId('ACC'),
-      customerId: accountData.customerId,
-      accountNumber,
-      accountType: accountData.accountType,
-      status: AccountStatus.ACTIVE,
-      balance: accountData.initialBalance || 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    accounts.push(newAccount);
-    setStorageData('mockAccounts', accounts);
-
-    return newAccount;
+    return result.account;
   }
 
   /**
@@ -77,25 +56,21 @@ export class AccountService {
   ): Promise<Account> {
     await this.simulateApiDelay();
 
-    const accounts = reviveDatesInArray(
-      getStorageData<Account>('mockAccounts')
-    );
-    const accountIndex = accounts.findIndex(a => a.accountId === accountId);
+    const response = await fetch(`${this.baseUrl}/${accountId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(updates),
+    });
 
-    if (accountIndex === -1) {
-      throw new Error('口座が見つかりません。');
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '口座更新に失敗しました。');
     }
 
-    const updatedAccount: Account = {
-      ...accounts[accountIndex],
-      ...updates,
-      updatedAt: new Date(),
-    };
-
-    accounts[accountIndex] = updatedAccount;
-    setStorageData('mockAccounts', accounts);
-
-    return updatedAccount;
+    return result.account;
   }
 
   /**
@@ -104,39 +79,16 @@ export class AccountService {
   async closeAccount(accountId: string): Promise<BaseApiResponse> {
     await this.simulateApiDelay();
 
-    const accounts = reviveDatesInArray(
-      getStorageData<Account>('mockAccounts')
-    );
-    const accountIndex = accounts.findIndex(a => a.accountId === accountId);
+    const response = await fetch(`${this.baseUrl}/${accountId}`, {
+      method: 'DELETE',
+    });
 
-    if (accountIndex === -1) {
-      return {
-        success: false,
-        message: '口座が見つかりません。',
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    const account = accounts[accountIndex];
-
-    // 残高チェック
-    if (account.balance !== 0) {
-      return {
-        success: false,
-        message: '残高がゼロでないため、口座を解約できません。',
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    // 口座状態を解約済みに変更
-    accounts[accountIndex].status = AccountStatus.CLOSED;
-    accounts[accountIndex].updatedAt = new Date();
-    setStorageData('mockAccounts', accounts);
+    const result = await response.json();
 
     return {
-      success: true,
-      message: '口座が正常に解約されました。',
-      timestamp: new Date().toISOString(),
+      success: result.success,
+      message: result.message,
+      timestamp: result.timestamp || new Date().toISOString(),
     };
   }
 
@@ -146,16 +98,16 @@ export class AccountService {
   async getAccount(accountId: string): Promise<Account> {
     await this.simulateApiDelay();
 
-    const accounts = reviveDatesInArray(
-      getStorageData<Account>('mockAccounts')
+    const response = await fetch(
+      `${this.baseUrl}/details?accountId=${accountId}`
     );
-    const account = accounts.find(a => a.accountId === accountId);
+    const result = await response.json();
 
-    if (!account) {
-      throw new Error('口座が見つかりません。');
+    if (!result.success) {
+      throw new Error(result.message || '口座が見つかりません。');
     }
 
-    return account;
+    return result.account;
   }
 
   /**
@@ -164,10 +116,34 @@ export class AccountService {
   async getAccountsByCustomer(customerId: string): Promise<Account[]> {
     await this.simulateApiDelay();
 
-    const accounts = reviveDatesInArray(
-      getStorageData<Account>('mockAccounts')
-    );
-    return accounts.filter(a => a.customerId === customerId);
+    const response = await fetch(`${this.baseUrl}/customer/${customerId}`);
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '口座の取得に失敗しました。');
+    }
+
+    return result.accounts;
+  }
+
+  /**
+   * 口座一覧検索
+   */
+  async accountsList(pagination: {
+    page: number;
+    limit: number;
+  }): Promise<Account[]> {
+    const response = await fetch(`${this.baseUrl}/list`);
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || '口座一覧検索に失敗しました。');
+    }
+
+    const offset = (pagination.page - 1) * pagination.limit;
+    const accounts = data.accounts.slice(offset, offset + pagination.limit);
+
+    return accounts;
   }
 
   /**
@@ -176,40 +152,28 @@ export class AccountService {
   async searchAccounts(criteria: AccountSearchCriteria): Promise<Account[]> {
     await this.simulateApiDelay();
 
-    let accounts = reviveDatesInArray(getStorageData<Account>('mockAccounts'));
+    const params = new URLSearchParams();
 
-    // 検索条件を適用
-    if (criteria.accountId) {
-      accounts = accounts.filter(a =>
-        a.accountId.toLowerCase().includes(criteria.accountId!.toLowerCase())
-      );
+    if (criteria.accountId) params.append('accountId', criteria.accountId);
+    if (criteria.customerId) params.append('customerId', criteria.customerId);
+    if (criteria.accountNumber)
+      params.append('accountNumber', criteria.accountNumber);
+    if (criteria.accountType)
+      params.append('accountType', criteria.accountType);
+    if (criteria.status) params.append('status', criteria.status);
+    if (criteria.offset) params.append('offset', criteria.offset.toString());
+    if (criteria.limit) params.append('limit', criteria.limit.toString());
+
+    console.log(params);
+
+    const response = await fetch(`${this.baseUrl}/search?${params.toString()}`);
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '口座検索に失敗しました。');
     }
 
-    if (criteria.customerId) {
-      accounts = accounts.filter(a => a.customerId === criteria.customerId);
-    }
-
-    if (criteria.accountNumber) {
-      accounts = accounts.filter(a =>
-        a.accountNumber
-          .toLowerCase()
-          .includes(criteria.accountNumber!.toLowerCase())
-      );
-    }
-
-    if (criteria.accountType) {
-      accounts = accounts.filter(a => a.accountType === criteria.accountType);
-    }
-
-    if (criteria.status) {
-      accounts = accounts.filter(a => a.status === criteria.status);
-    }
-
-    // ページネーション
-    const offset = criteria.offset || 0;
-    const limit = criteria.limit || 50;
-
-    return accounts.slice(offset, offset + limit);
+    return result.accounts;
   }
 
   /**
@@ -218,28 +182,14 @@ export class AccountService {
   async getAccountBalance(accountId: string): Promise<AccountBalance> {
     await this.simulateApiDelay();
 
-    const account = await this.getAccount(accountId);
+    const response = await fetch(`${this.baseUrl}/${accountId}/balance`);
+    const result = await response.json();
 
-    return {
-      accountId: account.accountId,
-      accountNumber: account.accountNumber,
-      balance: account.balance,
-      availableBalance: account.balance, // 簡易版では同じ値
-      lastUpdated: account.updatedAt,
-    };
-  }
+    if (!result.success) {
+      throw new Error(result.message || '口座残高の取得に失敗しました。');
+    }
 
-  /**
-   * 口座番号生成（簡易版）
-   */
-  private generateAccountNumber(customerId: string): string {
-    const customerNum = customerId.replace('CUST', '');
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.floor(Math.random() * 100)
-      .toString()
-      .padStart(2, '0');
-
-    return `${customerNum}-${timestamp}-${random}`;
+    return result.balance;
   }
 
   /**

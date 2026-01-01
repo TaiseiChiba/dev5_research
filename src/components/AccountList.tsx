@@ -139,9 +139,9 @@ const AccountList: React.FC = () => {
    */
   const loadAccounts = async () => {
     try {
-      const searchResults = await accountService.searchAccounts({
+      const searchResults = await accountService.accountsList({
+        page: currentPage,
         limit: itemsPerPage,
-        offset: (currentPage - 1) * itemsPerPage,
       });
 
       setAccounts(searchResults);
