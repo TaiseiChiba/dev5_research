@@ -123,8 +123,6 @@ const CustomerDetail: React.FC = () => {
         return '当座預金';
       case AccountType.FIXED_DEPOSIT:
         return '定期預金';
-      case AccountType.LOAN:
-        return 'ローン';
       default:
         return type;
     }
