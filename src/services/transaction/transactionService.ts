@@ -12,8 +12,8 @@ import {
   TransactionSearchCriteria,
   TransactionStatus,
   BaseApiResponse,
-  Account,
 } from '../../types/index.js';
+import { Account, AccountStatus } from '../../types/account.js';
 import {
   getStorageData,
   setStorageData,
@@ -360,7 +360,7 @@ export class TransactionService {
       const sourceAccount = accounts.find(
         (a: any) => a.accountId === transactionData.sourceAccountId
       );
-      if (!sourceAccount || sourceAccount.status !== 'active') {
+      if (!sourceAccount || sourceAccount.status !== AccountStatus.ACTIVE) {
         throw new Error('振込元口座が見つからないか、無効な状態です。');
       }
     }
@@ -369,7 +369,7 @@ export class TransactionService {
       const destAccount = accounts.find(
         (a: any) => a.accountId === transactionData.destinationAccountId
       );
-      if (!destAccount || destAccount.status !== 'active') {
+      if (!destAccount || destAccount.status !== AccountStatus.ACTIVE) {
         throw new Error('振込先口座が見つからないか、無効な状態です。');
       }
     }

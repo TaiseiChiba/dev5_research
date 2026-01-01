@@ -56,7 +56,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
       icon: <ReceiptLongOutlined />,
       title: '取引処理ワークフロー',
       description: '多段階承認による取引処理システム',
-      action: null,
+      action: () => navigate(PATHS.TRANSACTION_INPUT),
     },
     {
       icon: <HistoryOutlined />,
