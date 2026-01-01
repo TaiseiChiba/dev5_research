@@ -69,34 +69,27 @@ export class AccountService {
   async listAccounts(): Promise<Account[]> {
     await this.simulateApiDelay();
 
-    try {
-      const response = await fetch(`${this.baseUrl}/list`);
+    const response = await fetch(`${this.baseUrl}/list`);
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (!result.success) {
-        throw new Error(result.message || '口座一覧の取得に失敗しました。');
-      }
-
-      // 日付文字列をDateオブジェクトに変換
-      const accounts = result.accounts.map((account: any) => ({
-        ...account,
-        createdAt: new Date(account.createdAt),
-        updatedAt: new Date(account.updatedAt),
-        balance: parseFloat(account.balance), // Decimal型を数値に変換
-      }));
-
-      return accounts;
-    } catch (error) {
-      console.error('Account list error:', error);
-      throw new Error(
-        '口座一覧の取得に失敗しました。サーバーに接続できません。'
-      );
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '口座一覧の取得に失敗しました。');
+    }
+
+    // 日付文字列をDateオブジェクトに変換
+    const accounts = result.accounts.map((account: any) => ({
+      ...account,
+      createdAt: new Date(account.createdAt),
+      updatedAt: new Date(account.updatedAt),
+      balance: parseFloat(account.balance), // Decimal型を数値に変換
+    }));
+
+    return accounts;
   }
 
   /**

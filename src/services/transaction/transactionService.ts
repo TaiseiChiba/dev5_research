@@ -20,6 +20,7 @@ import {
   generateId,
   reviveDatesInArray,
 } from '../common/storageService.js';
+import { ServiceFactory } from '../common/serviceFactory.js';
 
 /**
  * API呼び出しをシミュレートする遅延
@@ -354,11 +355,13 @@ export class TransactionService {
   private async validateAccounts(
     transactionData: TransactionInput
   ): Promise<void> {
-    const accounts = getStorageData<Account>('mockAccounts');
+    // AccountServiceを使用して口座データを取得
+    const accountService = ServiceFactory.getInstance().getAccountService();
+    const accounts = await accountService.listAccounts();
 
     if (transactionData.sourceAccountId) {
       const sourceAccount = accounts.find(
-        (a: any) => a.accountId === transactionData.sourceAccountId
+        (a: Account) => a.accountId === transactionData.sourceAccountId
       );
       if (!sourceAccount || sourceAccount.status !== AccountStatus.ACTIVE) {
         throw new Error('振込元口座が見つからないか、無効な状態です。');
@@ -367,7 +370,7 @@ export class TransactionService {
 
     if (transactionData.destinationAccountId) {
       const destAccount = accounts.find(
-        (a: any) => a.accountId === transactionData.destinationAccountId
+        (a: Account) => a.accountId === transactionData.destinationAccountId
       );
       if (!destAccount || destAccount.status !== AccountStatus.ACTIVE) {
         throw new Error('振込先口座が見つからないか、無効な状態です。');

@@ -83,10 +83,12 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
     const loadAccounts = async () => {
       try {
         setLoading(true);
+        console.log('Loading accounts...');
         const accountList = await accountService.listAccounts();
-        const activeAccounts = accountList.filter(
-          account => account.status === AccountStatus.ACTIVE
-        );
+        console.log('Accounts loaded:', accountList);
+        // デバッグ用：一時的にすべての口座を表示
+        const activeAccounts = accountList; // .filter(account => account.status === AccountStatus.ACTIVE);
+        console.log('Active accounts:', activeAccounts);
         setAccounts(activeAccounts);
       } catch (error) {
         console.error('口座一覧の取得に失敗しました:', error);
@@ -222,10 +224,12 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
         transactionDate: new Date(formData.transactionDate),
       };
 
+      console.log('Creating transaction with data:', transactionData);
       const result = await transactionService.createTransaction(
         transactionData,
         session.userId
       );
+      console.log('Transaction created successfully:', result);
 
       setSuccessMessage(
         `取引が正常に作成されました。取引ID: ${result.transactionId}`
