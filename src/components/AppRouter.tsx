@@ -14,6 +14,7 @@ import CustomerManagement from './CustomerManagement.js';
 import CustomerDetail from './CustomerDetail.js';
 import CustomerEdit from './CustomerEdit.js';
 import CustomerCreate from './CustomerCreate.js';
+import AccountList from './AccountList.js';
 import { NotFoundError, UnauthorizedError, ServerError } from './ErrorPages.js';
 import { UserSession } from '../types/auth.js';
 import { PATHS } from '../constants/paths.js';
@@ -76,9 +77,11 @@ const AppRouter: React.FC<AppRouterProps> = ({
             <Route path=":customerId/edit" element={<CustomerEdit />} />
           </Route>
 
-          {/* 口座管理（実装予定） */}
-          <Route path={PATHS.ACCOUNTS.slice(1)}>
-            <Route index element={<div>口座管理（実装予定）</div>} />
+          {/* 口座管理 */}
+          <Route path="accounts">
+            <Route index element={<Navigate to="/accounts/list" replace />} />
+            <Route path="list" element={<AccountList />} />
+            {/* 他の口座管理ルートは後で実装 */}
           </Route>
 
           {/* 取引管理（実装予定） */}
