@@ -13,7 +13,7 @@ import {
   Alert,
 } from '@mui/material';
 import { ErrorOutline, LockOutlined, HomeOutlined } from '@mui/icons-material';
-import { PATHS } from '../constants/paths.js';
+import { PATHS } from '../../constants/paths.js';
 
 /**
  * 404 - ページが見つからない

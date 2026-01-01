@@ -28,10 +28,10 @@ import {
   MenuOutlined,
   AccountCircleOutlined,
 } from '@mui/icons-material';
-import UserSwitchModal from './UserSwitchModal.js';
-import { UserSession, UserRole } from '../types/auth.js';
-import { ServiceFactory } from '../services/serviceFactory.js';
-import { PATHS } from '../constants/paths.js';
+import UserSwitchModal from '../auth/UserSwitchModal.js';
+import { UserSession, UserRole } from '../../types/auth.js';
+import { ServiceFactory } from '../../services/common/serviceFactory.js';
+import { PATHS } from '../../constants/paths.js';
 
 interface AppLayoutProps {
   session: UserSession;

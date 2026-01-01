@@ -24,7 +24,7 @@ describe('アプリケーション初期化', () => {
   test('セッションがない場合はログイン画面を表示する', async () => {
     // ServiceFactoryを初期化してからinitializeAppを呼び出す
     const serviceFactory = (
-      await import('../src/services/serviceFactory')
+      await import('../src/services/common/serviceFactory')
     ).ServiceFactory.getInstance();
     await serviceFactory.initialize();
 
@@ -57,7 +57,7 @@ describe('アプリケーション初期化', () => {
 
     // ServiceFactoryを初期化
     const serviceFactory = (
-      await import('../src/services/serviceFactory')
+      await import('../src/services/common/serviceFactory')
     ).ServiceFactory.getInstance();
     await serviceFactory.initialize();
 
@@ -70,7 +70,7 @@ describe('ログイン画面', () => {
   beforeEach(async () => {
     // ServiceFactoryを初期化してからinitializeAppを呼び出す
     const serviceFactory = (
-      await import('../src/services/serviceFactory')
+      await import('../src/services/common/serviceFactory')
     ).ServiceFactory.getInstance();
     await serviceFactory.initialize();
     await initializeApp();

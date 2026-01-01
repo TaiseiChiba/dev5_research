@@ -28,9 +28,9 @@ import {
   PersonOutline,
   AdminPanelSettings,
 } from '@mui/icons-material';
-import { ServiceFactory } from '../services/serviceFactory.js';
-import { UserRole, LoginRequest, UserSession } from '../types/auth.js';
-import { PATHS } from '../constants/paths.js';
+import { ServiceFactory } from '../../services/common/serviceFactory.js';
+import { UserRole, LoginRequest, UserSession } from '../../types/auth.js';
+import { PATHS } from '../../constants/paths.js';
 
 interface LoginScreenProps {
   onLoginSuccess: (session: UserSession) => void;

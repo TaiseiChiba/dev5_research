@@ -9,15 +9,15 @@ import {
   LoginRequest,
   SwitchUserRequest,
   UserSession,
-} from '../types/index.js';
+} from '../../types/index.js';
 import {
   getStorageObject,
   setStorageObject,
   removeStorageData,
   generateId,
   reviveDates,
-} from './storageService.js';
-import { API_BASE_URL } from '../env.js';
+} from '../common/storageService.js';
+import { API_BASE_URL } from '../../env.js';
 
 /**
  * API呼び出しをシミュレートする遅延

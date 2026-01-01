@@ -29,10 +29,10 @@ import {
   HistoryOutlined,
   SecurityOutlined,
 } from '@mui/icons-material';
-import UserSwitchModal from './UserSwitchModal';
-import CustomerManagement from './CustomerManagement';
+import UserSwitchModal from './auth/UserSwitchModal';
+import CustomerManagement from './customer/CustomerManagement';
 import { UserSession, UserRole } from '../types/auth';
-import { ServiceFactory } from '../services/serviceFactory';
+import { ServiceFactory } from '../services/common/serviceFactory';
 
 interface MainApplicationProps {
   session: UserSession;

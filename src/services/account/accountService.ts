@@ -10,7 +10,7 @@ import {
   AccountBalance,
   AccountSearchCriteria,
   BaseApiResponse,
-} from '../types/index.js';
+} from '../../types/index.js';
 
 /**
  * API呼び出しをシミュレートする遅延

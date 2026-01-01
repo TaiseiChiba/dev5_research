@@ -45,9 +45,9 @@ import {
   Customer,
   CustomerType,
   CustomerSearchCriteria,
-} from '../types/customer';
-import { ServiceFactory } from '../services/serviceFactory';
-import { generatePath, PATHS } from '../constants/paths';
+} from '../../types/customer';
+import { ServiceFactory } from '../../services/common/serviceFactory';
+import { generatePath, PATHS } from '../../constants/paths';
 
 const CustomerManagement: React.FC = () => {
   const navigate = useNavigate();

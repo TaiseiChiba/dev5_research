@@ -10,14 +10,14 @@ import {
   CustomerSearchCriteria,
   PaginatedResult,
   BaseApiResponse,
-} from '../types/index.js';
+} from '../../types/index.js';
 import {
   getStorageData,
   setStorageData,
   generateId,
   reviveDatesInArray,
-} from './storageService.js';
-import { API_BASE_URL, isTestEnvironment } from '../env.js';
+} from '../common/storageService.js';
+import { API_BASE_URL, isTestEnvironment } from '../../env.js';
 
 /**
  * API呼び出しをシミュレートする遅延

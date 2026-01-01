@@ -23,8 +23,8 @@ import {
   HistoryOutlined,
   SecurityOutlined,
 } from '@mui/icons-material';
-import { UserSession, UserRole } from '../types/auth.js';
-import { PATHS } from '../constants/paths.js';
+import { UserSession, UserRole } from '../../types/auth.js';
+import { PATHS } from '../../constants/paths.js';
 
 interface DashboardProps {
   session: UserSession;

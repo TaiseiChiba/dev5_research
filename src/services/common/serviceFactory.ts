@@ -4,12 +4,12 @@
  * アプリケーション全体で使用するサービスインスタンスを管理します。
  */
 
-import { AuthService } from './authService.js';
-import { CustomerService } from './customerService.js';
-import { AccountService } from './accountService.js';
-import { TransactionService } from './transactionService.js';
-import { WorkflowService } from './workflowService.js';
-import { initializeMockData } from '../data/mockData.js';
+import { AuthService } from '../auth/authService.js';
+import { CustomerService } from '../customer/customerService.js';
+import { AccountService } from '../account/accountService.js';
+import { TransactionService } from '../transaction/transactionService.js';
+import { WorkflowService } from '../workflow/workflowService.js';
+import { initializeMockData } from '../../data/mockData.js';
 
 /**
  * サービスファクトリークラス
