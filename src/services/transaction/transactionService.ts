@@ -12,14 +12,15 @@ import {
   TransactionSearchCriteria,
   TransactionStatus,
   BaseApiResponse,
-  Account,
 } from '../../types/index.js';
+import { Account, AccountStatus } from '../../types/account.js';
 import {
   getStorageData,
   setStorageData,
   generateId,
   reviveDatesInArray,
 } from '../common/storageService.js';
+import { ServiceFactory } from '../common/serviceFactory.js';
 
 /**
  * API呼び出しをシミュレートする遅延
@@ -354,22 +355,24 @@ export class TransactionService {
   private async validateAccounts(
     transactionData: TransactionInput
   ): Promise<void> {
-    const accounts = getStorageData<Account>('mockAccounts');
+    // AccountServiceを使用して口座データを取得
+    const accountService = ServiceFactory.getInstance().getAccountService();
+    const accounts = await accountService.listAccounts();
 
     if (transactionData.sourceAccountId) {
       const sourceAccount = accounts.find(
-        (a: any) => a.accountId === transactionData.sourceAccountId
+        (a: Account) => a.accountId === transactionData.sourceAccountId
       );
-      if (!sourceAccount || sourceAccount.status !== 'active') {
+      if (!sourceAccount || sourceAccount.status !== AccountStatus.ACTIVE) {
         throw new Error('振込元口座が見つからないか、無効な状態です。');
       }
     }
 
     if (transactionData.destinationAccountId) {
       const destAccount = accounts.find(
-        (a: any) => a.accountId === transactionData.destinationAccountId
+        (a: Account) => a.accountId === transactionData.destinationAccountId
       );
-      if (!destAccount || destAccount.status !== 'active') {
+      if (!destAccount || destAccount.status !== AccountStatus.ACTIVE) {
         throw new Error('振込先口座が見つからないか、無効な状態です。');
       }
     }

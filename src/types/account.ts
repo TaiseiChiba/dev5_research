@@ -37,6 +37,13 @@ export interface Account {
 }
 
 /**
+ * 顧客情報を含む口座情報（表示用）
+ */
+export interface AccountWithCustomer extends Account {
+  customerName: string;
+}
+
+/**
  * 口座データ（作成・更新用）
  */
 export interface AccountData {

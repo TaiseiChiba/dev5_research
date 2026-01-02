@@ -18,6 +18,8 @@ import AccountList from '../account/AccountList.js';
 import AccountDetail from '../account/AccountDetail.js';
 import AccountEdit from '../account/AccountEdit.js';
 import AccountCreate from '../account/AccountCreate.js';
+import TransactionInput from '../transaction/TransactionInput.js';
+import { TransactionVerification } from '../transaction/TransactionVerification.js';
 import { NotFoundError, UnauthorizedError, ServerError } from './ErrorPages.js';
 import { UserSession } from '../../types/auth.js';
 import { PATHS } from '../../constants/paths.js';
@@ -90,9 +92,17 @@ const AppRouter: React.FC<AppRouterProps> = ({
             {/* 他の口座管理ルートは後で実装 */}
           </Route>
 
-          {/* 取引管理（実装予定） */}
+          {/* 取引管理 */}
           <Route path={PATHS.TRANSACTIONS.slice(1)}>
             <Route index element={<div>取引管理（実装予定）</div>} />
+            <Route
+              path="input"
+              element={<TransactionInput session={session!} />}
+            />
+            <Route
+              path="verification"
+              element={<TransactionVerification session={session!} />}
+            />
           </Route>
 
           {/* ワークフロー管理（実装予定） */}
