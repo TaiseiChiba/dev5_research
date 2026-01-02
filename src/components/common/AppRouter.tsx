@@ -19,6 +19,7 @@ import AccountDetail from '../account/AccountDetail.js';
 import AccountEdit from '../account/AccountEdit.js';
 import AccountCreate from '../account/AccountCreate.js';
 import TransactionInput from '../transaction/TransactionInput.js';
+import { TransactionVerification } from '../transaction/TransactionVerification.js';
 import { NotFoundError, UnauthorizedError, ServerError } from './ErrorPages.js';
 import { UserSession } from '../../types/auth.js';
 import { PATHS } from '../../constants/paths.js';
@@ -97,6 +98,10 @@ const AppRouter: React.FC<AppRouterProps> = ({
             <Route
               path="input"
               element={<TransactionInput session={session!} />}
+            />
+            <Route
+              path="verification"
+              element={<TransactionVerification session={session!} />}
             />
           </Route>
 

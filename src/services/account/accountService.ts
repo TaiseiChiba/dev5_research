@@ -6,6 +6,7 @@
 
 import {
   Account,
+  AccountWithCustomer,
   AccountData,
   AccountBalance,
   AccountSearchCriteria,
@@ -70,6 +71,35 @@ export class AccountService {
     await this.simulateApiDelay();
 
     const response = await fetch(`${this.baseUrl}/list`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '口座一覧の取得に失敗しました。');
+    }
+
+    // 日付文字列をDateオブジェクトに変換
+    const accounts = result.accounts.map((account: any) => ({
+      ...account,
+      createdAt: new Date(account.createdAt),
+      updatedAt: new Date(account.updatedAt),
+      balance: parseFloat(account.balance), // Decimal型を数値に変換
+    }));
+
+    return accounts;
+  }
+
+  /**
+   * 顧客情報を含む口座一覧取得（取引入力画面用）
+   */
+  async listAccountsWithCustomer(): Promise<AccountWithCustomer[]> {
+    await this.simulateApiDelay();
+
+    const response = await fetch(`${this.baseUrl}/list-with-customer`);
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`);

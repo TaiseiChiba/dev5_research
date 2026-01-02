@@ -28,7 +28,8 @@ import {
   TransactionType,
   TransactionInput as TransactionInputData,
 } from '../../types/transaction.js';
-import { Account, AccountStatus } from '../../types/account.js';
+import { AccountWithCustomer } from '../../types/account.js';
+import { Customer } from '../../types/customer.js';
 import { ServiceFactory } from '../../services/common/serviceFactory.js';
 import { PATHS } from '../../constants/paths.js';
 
@@ -60,6 +61,7 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
   const transactionService =
     ServiceFactory.getInstance().getTransactionService();
   const accountService = ServiceFactory.getInstance().getAccountService();
+  const customerService = ServiceFactory.getInstance().getCustomerService();
 
   // フォームデータ
   const [formData, setFormData] = useState<FormData>({
@@ -72,7 +74,7 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
   });
 
   // 状態管理
-  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accounts, setAccounts] = useState<AccountWithCustomer[]>([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
@@ -84,12 +86,35 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
       try {
         setLoading(true);
         console.log('Loading accounts...');
-        const accountList = await accountService.listAccounts();
+
+        // 口座一覧と顧客一覧を並行取得
+        const [accountList, customerList] = await Promise.all([
+          accountService.listAccounts(),
+          customerService.listCustomers({ page: 1, limit: 1000 }), // 全顧客を取得
+        ]);
+
         console.log('Accounts loaded:', accountList);
-        // デバッグ用：一時的にすべての口座を表示
-        const activeAccounts = accountList; // .filter(account => account.status === AccountStatus.ACTIVE);
-        console.log('Active accounts:', activeAccounts);
-        setAccounts(activeAccounts);
+        console.log('Customers loaded:', customerList);
+
+        // 顧客情報をマップに変換
+        const customerMap = new Map<string, Customer>();
+        customerList.data.forEach(customer => {
+          customerMap.set(customer.customerId, customer);
+        });
+
+        // 口座に顧客名を結合
+        const accountsWithCustomer: AccountWithCustomer[] = accountList.map(
+          account => {
+            const customer = customerMap.get(account.customerId);
+            return {
+              ...account,
+              customerName: customer ? customer.name : '不明な顧客',
+            };
+          }
+        );
+
+        console.log('Accounts with customer:', accountsWithCustomer);
+        setAccounts(accountsWithCustomer);
       } catch (error) {
         console.error('口座一覧の取得に失敗しました:', error);
         setErrors({
@@ -102,7 +127,7 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
     };
 
     loadAccounts();
-  }, [accountService]);
+  }, [accountService, customerService]);
 
   // フォーム入力ハンドラー
   const handleInputChange = (field: keyof FormData, value: any) => {
@@ -266,7 +291,7 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
       .filter(account => account.accountId !== excludeAccountId)
       .map(account => ({
         value: account.accountId,
-        label: `${account.accountNumber} (残高: ¥${account.balance.toLocaleString()})`,
+        label: `${account.customerName}：${account.accountNumber} (残高: ¥${account.balance.toLocaleString()})`,
         account,
       }));
   };
