@@ -2,10 +2,10 @@
  * 取引入力コンポーネント
  *
  * 振込・入金・出金取引の入力フォームを提供します。
- * 要件: 4.1, 4.2, 4.3
+ * 要件: 4.1, 4.2, 4.3, 4.4, 4.5, 8.1, 8.2, 8.3
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Card,
@@ -22,6 +22,7 @@ import {
   Autocomplete,
   InputAdornment,
   Divider,
+  FormHelperText,
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -32,6 +33,14 @@ import { AccountWithCustomer } from '../../types/account.js';
 import { Customer } from '../../types/customer.js';
 import { ServiceFactory } from '../../services/common/serviceFactory.js';
 import { PATHS } from '../../constants/paths.js';
+import {
+  validateTransactionForm,
+  validateAmount,
+  validateDescription,
+  validateTransactionDate,
+  debounce,
+  ValidationErrors,
+} from '../../utils/transactionValidation.js';
 
 interface TransactionInputProps {
   session?: { userId: string; userRole: string };
@@ -79,6 +88,53 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
   const [successMessage, setSuccessMessage] = useState('');
+  const [realTimeErrors, setRealTimeErrors] = useState<ValidationErrors>({});
+
+  // リアルタイム検証のデバウンス関数
+  const debouncedValidateAmount = useCallback(
+    debounce((amount: string) => {
+      if (amount) {
+        const validation = validateAmount(amount);
+        setRealTimeErrors(prev => ({
+          ...prev,
+          amount: validation.isValid ? undefined : validation.message,
+        }));
+      } else {
+        setRealTimeErrors(prev => ({ ...prev, amount: undefined }));
+      }
+    }, 500),
+    []
+  );
+
+  const debouncedValidateDescription = useCallback(
+    debounce((description: string) => {
+      if (description) {
+        const validation = validateDescription(description);
+        setRealTimeErrors(prev => ({
+          ...prev,
+          description: validation.isValid ? undefined : validation.message,
+        }));
+      } else {
+        setRealTimeErrors(prev => ({ ...prev, description: undefined }));
+      }
+    }, 500),
+    []
+  );
+
+  const debouncedValidateDate = useCallback(
+    debounce((date: string) => {
+      if (date) {
+        const validation = validateTransactionDate(date);
+        setRealTimeErrors(prev => ({
+          ...prev,
+          transactionDate: validation.isValid ? undefined : validation.message,
+        }));
+      } else {
+        setRealTimeErrors(prev => ({ ...prev, transactionDate: undefined }));
+      }
+    }, 500),
+    []
+  );
 
   // 口座一覧の取得
   useEffect(() => {
@@ -132,8 +188,26 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
   // フォーム入力ハンドラー
   const handleInputChange = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+
+    // エラーをクリア
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+    if (realTimeErrors[field]) {
+      setRealTimeErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+
+    // リアルタイム検証の実行
+    switch (field) {
+      case 'amount':
+        debouncedValidateAmount(value);
+        break;
+      case 'description':
+        debouncedValidateDescription(value);
+        break;
+      case 'transactionDate':
+        debouncedValidateDate(value);
+        break;
     }
   };
 
@@ -146,81 +220,14 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
       destinationAccountId: '',
     }));
     setErrors({});
+    setRealTimeErrors({});
   };
 
-  // バリデーション
+  // バリデーション（送信時の最終検証）
   const validateForm = (): boolean => {
-    const newErrors: FormErrors = {};
-
-    // 取引タイプ別の必須項目チェック
-    switch (formData.type) {
-      case TransactionType.TRANSFER:
-        if (!formData.sourceAccountId) {
-          newErrors.sourceAccountId = '振込元口座を選択してください。';
-        }
-        if (!formData.destinationAccountId) {
-          newErrors.destinationAccountId = '振込先口座を選択してください。';
-        }
-        if (formData.sourceAccountId === formData.destinationAccountId) {
-          newErrors.destinationAccountId =
-            '振込元と振込先に同じ口座は選択できません。';
-        }
-        break;
-
-      case TransactionType.DEPOSIT:
-        if (!formData.destinationAccountId) {
-          newErrors.destinationAccountId = '入金先口座を選択してください。';
-        }
-        break;
-
-      case TransactionType.WITHDRAWAL:
-        if (!formData.sourceAccountId) {
-          newErrors.sourceAccountId = '出金元口座を選択してください。';
-        }
-        break;
-    }
-
-    // 金額のバリデーション
-    if (!formData.amount) {
-      newErrors.amount = '金額を入力してください。';
-    } else {
-      const amount = parseFloat(formData.amount);
-      if (isNaN(amount) || amount <= 0) {
-        newErrors.amount = '正の数値を入力してください。';
-      } else if (amount > 10000000) {
-        newErrors.amount = '金額は1,000万円以下で入力してください。';
-      }
-    }
-
-    // 取引内容のバリデーション
-    if (!formData.description.trim()) {
-      newErrors.description = '取引内容を入力してください。';
-    } else if (formData.description.length > 100) {
-      newErrors.description = '取引内容は100文字以内で入力してください。';
-    }
-
-    // 取引日のバリデーション
-    if (!formData.transactionDate) {
-      newErrors.transactionDate = '取引日を選択してください。';
-    } else {
-      const today = new Date();
-      const selectedDate = new Date(formData.transactionDate);
-
-      if (
-        selectedDate <
-        new Date(today.getFullYear(), today.getMonth(), today.getDate())
-      ) {
-        newErrors.transactionDate = '過去の日付は選択できません。';
-      }
-
-      const dayOfWeek = selectedDate.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) {
-        newErrors.transactionDate = '営業日（平日）を選択してください。';
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const validationErrors = validateTransactionForm(formData);
+    setErrors(validationErrors);
+    return Object.keys(validationErrors).length === 0;
   };
 
   // フォーム送信
@@ -456,8 +463,12 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
                   type="number"
                   value={formData.amount}
                   onChange={e => handleInputChange('amount', e.target.value)}
-                  error={!!errors.amount}
-                  helperText={errors.amount}
+                  error={!!(errors.amount || realTimeErrors.amount)}
+                  helperText={
+                    errors.amount ||
+                    realTimeErrors.amount ||
+                    '1円以上1,000万円以下で入力してください'
+                  }
                   required
                   InputProps={{
                     startAdornment: (
@@ -482,8 +493,14 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
                   onChange={e =>
                     handleInputChange('transactionDate', e.target.value)
                   }
-                  error={!!errors.transactionDate}
-                  helperText={errors.transactionDate}
+                  error={
+                    !!(errors.transactionDate || realTimeErrors.transactionDate)
+                  }
+                  helperText={
+                    errors.transactionDate ||
+                    realTimeErrors.transactionDate ||
+                    '営業日（平日・祝日以外）を選択してください'
+                  }
                   required
                   InputLabelProps={{
                     shrink: true,
@@ -505,9 +522,10 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
                   onChange={e =>
                     handleInputChange('description', e.target.value)
                   }
-                  error={!!errors.description}
+                  error={!!(errors.description || realTimeErrors.description)}
                   helperText={
                     errors.description ||
+                    realTimeErrors.description ||
                     `${formData.description.length}/100文字`
                   }
                   required
@@ -515,6 +533,18 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
                     maxLength: 100,
                   }}
                 />
+                {/* 文字数カウンターの追加表示 */}
+                <FormHelperText
+                  sx={{
+                    textAlign: 'right',
+                    color:
+                      formData.description.length > 80
+                        ? 'warning.main'
+                        : 'text.secondary',
+                  }}
+                >
+                  {formData.description.length}/100文字
+                </FormHelperText>
               </Grid>
 
               {/* 送信ボタン */}
