@@ -24,7 +24,7 @@ import {
   Divider,
   FormHelperText,
 } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   TransactionType,
   TransactionInput as TransactionInputData,
@@ -65,21 +65,50 @@ interface FormErrors {
   general?: string;
 }
 
+interface TransactionConfirmationData {
+  type: TransactionType;
+  sourceAccountId?: string;
+  destinationAccountId?: string;
+  amount: number;
+  description: string;
+  transactionDate: Date;
+}
+
 const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const transactionService =
     ServiceFactory.getInstance().getTransactionService();
   const accountService = ServiceFactory.getInstance().getAccountService();
   const customerService = ServiceFactory.getInstance().getCustomerService();
 
-  // フォームデータ
-  const [formData, setFormData] = useState<FormData>({
-    type: TransactionType.TRANSFER,
-    sourceAccountId: '',
-    destinationAccountId: '',
-    amount: '',
-    description: '',
-    transactionDate: new Date().toISOString().split('T')[0],
+  // フォームデータの初期化（確認画面からの戻りデータを考慮）
+  const [formData, setFormData] = useState<FormData>(() => {
+    // location.stateから戻りデータを取得
+    const stateData = location.state as {
+      transactionData?: TransactionConfirmationData;
+    };
+
+    if (stateData?.transactionData) {
+      const data = stateData.transactionData;
+      return {
+        type: data.type,
+        sourceAccountId: data.sourceAccountId || '',
+        destinationAccountId: data.destinationAccountId || '',
+        amount: data.amount.toString(),
+        description: data.description,
+        transactionDate: data.transactionDate.toISOString().split('T')[0],
+      };
+    }
+
+    return {
+      type: TransactionType.TRANSFER,
+      sourceAccountId: '',
+      destinationAccountId: '',
+      amount: '',
+      description: '',
+      transactionDate: new Date().toISOString().split('T')[0],
+    };
   });
 
   // 状態管理
@@ -230,7 +259,7 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
     return Object.keys(validationErrors).length === 0;
   };
 
-  // フォーム送信
+  // フォーム送信（確認画面に遷移）
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -256,36 +285,19 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
         transactionDate: new Date(formData.transactionDate),
       };
 
-      console.log('Creating transaction with data:', transactionData);
-      const result = await transactionService.createTransaction(
-        transactionData,
-        session.userId
-      );
-      console.log('Transaction created successfully:', result);
+      console.log('Navigating to confirmation with data:', transactionData);
 
-      setSuccessMessage(
-        `取引が正常に作成されました。取引ID: ${result.transactionId}`
-      );
-
-      // フォームをリセット
-      setFormData({
-        type: TransactionType.TRANSFER,
-        sourceAccountId: '',
-        destinationAccountId: '',
-        amount: '',
-        description: '',
-        transactionDate: new Date().toISOString().split('T')[0],
+      // 確認画面に遷移（データを引き継ぎ）
+      navigate(PATHS.TRANSACTION_CONFIRMATION, {
+        state: { transactionData },
       });
-
-      // 3秒後に検証画面に遷移
-      setTimeout(() => {
-        navigate(PATHS.TRANSACTION_VERIFICATION);
-      }, 3000);
     } catch (error) {
-      console.error('取引作成エラー:', error);
+      console.error('データ準備エラー:', error);
       setErrors({
         general:
-          error instanceof Error ? error.message : '取引の作成に失敗しました。',
+          error instanceof Error
+            ? error.message
+            : 'データの準備に失敗しました。',
       });
     } finally {
       setSubmitting(false);
@@ -564,7 +576,7 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
                     variant="contained"
                     disabled={submitting || accounts.length === 0}
                   >
-                    {submitting ? '処理中...' : '取引を作成'}
+                    {submitting ? '処理中...' : '確認画面へ'}
                   </Button>
                 </Box>
               </Grid>
