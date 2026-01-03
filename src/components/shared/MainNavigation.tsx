@@ -24,8 +24,6 @@ import {
   PeopleOutline,
   AccountBalanceOutlined,
   ReceiptLongOutlined,
-  WorkOutlined,
-  SettingsOutlined,
   ExpandLess,
   ExpandMore,
   ChevronRight,
@@ -83,12 +81,6 @@ const MainNavigation: React.FC<MainNavigationProps> = ({
           icon: <ChevronRight />,
           path: PATHS.CUSTOMER_LIST,
         },
-        {
-          id: 'customer-create',
-          label: '新規顧客登録',
-          icon: <ChevronRight />,
-          path: PATHS.CUSTOMER_CREATE,
-        },
       ],
     },
     {
@@ -101,12 +93,6 @@ const MainNavigation: React.FC<MainNavigationProps> = ({
           label: '口座一覧',
           icon: <ChevronRight />,
           path: PATHS.ACCOUNT_LIST,
-        },
-        {
-          id: 'account-create',
-          label: '新規口座開設',
-          icon: <ChevronRight />,
-          path: PATHS.ACCOUNT_CREATE,
         },
       ],
     },
@@ -128,12 +114,6 @@ const MainNavigation: React.FC<MainNavigationProps> = ({
           path: PATHS.TRANSACTION_VERIFICATION,
         },
         {
-          id: 'transaction-confirmation',
-          label: '取引確認',
-          icon: <ChevronRight />,
-          path: PATHS.TRANSACTION_CONFIRMATION,
-        },
-        {
           id: 'transaction-final-confirmation',
           label: '取引確定',
           icon: <ChevronRight />,
@@ -145,53 +125,6 @@ const MainNavigation: React.FC<MainNavigationProps> = ({
           label: '取引履歴',
           icon: <ChevronRight />,
           path: PATHS.TRANSACTION_HISTORY,
-        },
-      ],
-    },
-    {
-      id: 'workflow',
-      label: 'ワークフロー',
-      icon: <WorkOutlined />,
-      children: [
-        {
-          id: 'workflow-pending',
-          label: '検証待ち取引',
-          icon: <ChevronRight />,
-          path: PATHS.WORKFLOW_PENDING,
-        },
-        {
-          id: 'workflow-ready',
-          label: '確定準備完了',
-          icon: <ChevronRight />,
-          path: PATHS.WORKFLOW_READY,
-        },
-        {
-          id: 'workflow-history',
-          label: 'ワークフロー履歴',
-          icon: <ChevronRight />,
-          path: PATHS.WORKFLOW_HISTORY,
-        },
-      ],
-    },
-    {
-      id: 'settings',
-      label: '設定管理',
-      icon: <SettingsOutlined />,
-      adminOnly: true,
-      children: [
-        {
-          id: 'user-management',
-          label: 'ユーザー管理',
-          icon: <ChevronRight />,
-          path: PATHS.USER_MANAGEMENT,
-          adminOnly: true,
-        },
-        {
-          id: 'system-config',
-          label: 'システム設定',
-          icon: <ChevronRight />,
-          path: PATHS.SYSTEM_CONFIG,
-          adminOnly: true,
         },
       ],
     },
@@ -288,7 +221,14 @@ const MainNavigation: React.FC<MainNavigationProps> = ({
   };
 
   const drawerContent = (
-    <Box sx={{ width: DRAWER_WIDTH, height: '100%' }}>
+    <Box
+      sx={{
+        width: DRAWER_WIDTH,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
       {/* ドロワーヘッダー */}
       <Box
         sx={{
@@ -299,6 +239,7 @@ const MainNavigation: React.FC<MainNavigationProps> = ({
           borderBottom: `1px solid ${theme.palette.divider}`,
           backgroundColor: theme.palette.primary.main,
           color: theme.palette.primary.contrastText,
+          flexShrink: 0, // ヘッダーは縮小しない
         }}
       >
         <Typography variant="h6" noWrap sx={{ fontWeight: 600 }}>
@@ -320,21 +261,35 @@ const MainNavigation: React.FC<MainNavigationProps> = ({
         )}
       </Box>
 
-      {/* ナビゲーションリスト */}
-      <List sx={{ pt: 1 }}>
-        {navigationItems.map(item => renderNavigationItem(item))}
-      </List>
-
-      {/* フッター情報 */}
+      {/* ナビゲーションリスト - スクロール可能 */}
       <Box
         sx={{
-          position: 'absolute',
-          bottom: 0,
-          left: 0,
-          right: 0,
+          flexGrow: 1,
+          overflow: 'auto', // スクロール可能にする
+          '&::-webkit-scrollbar': {
+            width: '6px',
+          },
+          '&::-webkit-scrollbar-track': {
+            backgroundColor: theme.palette.grey[100],
+          },
+          '&::-webkit-scrollbar-thumb': {
+            backgroundColor: theme.palette.grey[400],
+            borderRadius: '3px',
+          },
+        }}
+      >
+        <List sx={{ pt: 1, pb: 1 }}>
+          {navigationItems.map(item => renderNavigationItem(item))}
+        </List>
+      </Box>
+
+      {/* フッター情報 - 固定位置 */}
+      <Box
+        sx={{
           p: 2,
           borderTop: `1px solid ${theme.palette.divider}`,
           backgroundColor: theme.palette.background.paper,
+          flexShrink: 0, // フッターは縮小しない
         }}
       >
         <Typography variant="caption" color="text.secondary">
