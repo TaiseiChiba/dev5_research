@@ -145,19 +145,9 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
 
   // 取引詳細表示
   const handleViewDetail = async (transaction: Transaction) => {
-    try {
-      // より詳細な情報を取得（必要に応じて）
-      const detailTransaction = await transactionService.getTransactionDetail(
-        transaction.transactionId
-      );
-      setSelectedTransaction(detailTransaction);
-      setDetailDialogOpen(true);
-    } catch (err) {
-      console.error('取引詳細の取得に失敗しました:', err);
-      // フォールバック: 既存のデータを使用
-      setSelectedTransaction(transaction);
-      setDetailDialogOpen(true);
-    }
+    // 既存のデータを使用（追加のAPI呼び出しなし）
+    setSelectedTransaction(transaction);
+    setDetailDialogOpen(true);
   };
 
   // 取引詳細ダイアログを閉じる
@@ -350,12 +340,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
                   </TableRow>
                 ) : (
                   transactions.map(transaction => (
-                    <TableRow
-                      key={transaction.transactionId}
-                      hover
-                      sx={{ cursor: 'pointer' }}
-                      onClick={() => handleViewDetail(transaction)}
-                    >
+                    <TableRow key={transaction.transactionId} hover>
                       <TableCell>
                         {formatDateTime(transaction.confirmedAt)}
                       </TableCell>
@@ -393,10 +378,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
                         <Tooltip title="詳細を表示">
                           <IconButton
                             size="small"
-                            onClick={e => {
-                              e.stopPropagation();
-                              handleViewDetail(transaction);
-                            }}
+                            onClick={() => handleViewDetail(transaction)}
                           >
                             <VisibilityIcon />
                           </IconButton>
