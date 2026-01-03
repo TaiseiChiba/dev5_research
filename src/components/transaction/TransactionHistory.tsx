@@ -493,7 +493,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
               <Paper sx={{ p: 3, mb: 2 }} variant="outlined">
                 <Grid container spacing={2}>
                   {/* 期間検索 */}
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid item xs={12} sm={6} md={2}>
                     <TextField
                       label="開始日"
                       type="date"
@@ -506,7 +506,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
                       size="small"
                     />
                   </Grid>
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid item xs={12} sm={6} md={2}>
                     <TextField
                       label="終了日"
                       type="date"
@@ -583,7 +583,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
                   </Grid>
 
                   {/* 取引種別検索 */}
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid item xs={12} sm={6} md={2}>
                     <FormControl fullWidth size="small">
                       <InputLabel>取引種別</InputLabel>
                       <Select
@@ -611,14 +611,19 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
                   </Grid>
 
                   {/* 検索ボタン */}
-                  <Grid item xs={12} sm={6} md={3}>
-                    <Box display="flex" gap={1}>
+                  <Grid item xs={12}>
+                    <Box
+                      display="flex"
+                      justifyContent="center"
+                      gap={1}
+                      sx={{ mt: 2 }}
+                    >
                       <Button
                         variant="contained"
                         startIcon={<SearchIcon />}
                         onClick={handleSearch}
                         disabled={loading}
-                        fullWidth
+                        size="small"
                       >
                         検索
                       </Button>
@@ -627,6 +632,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
                         startIcon={<ClearIcon />}
                         onClick={handleClearSearch}
                         disabled={loading}
+                        size="small"
                       >
                         クリア
                       </Button>
@@ -653,7 +659,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
                       startIcon={<SaveIcon />}
                       onClick={handleSaveCondition}
                       disabled={!saveConditionName.trim()}
-                      fullWidth
+                      size="small"
                     >
                       保存
                     </Button>
