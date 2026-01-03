@@ -2,6 +2,7 @@
  * 取引サービス
  *
  * 取引処理とワークフロー管理機能を提供します。
+ * 実際のAPIサーバーと連携してPostgreSQLデータベースを更新します。
  */
 
 import {
@@ -10,17 +11,8 @@ import {
   TransactionVerification,
   TransactionResult,
   TransactionSearchCriteria,
-  TransactionStatus,
   BaseApiResponse,
 } from '../../types/index.js';
-import { Account, AccountStatus } from '../../types/account.js';
-import {
-  getStorageData,
-  setStorageData,
-  generateId,
-  reviveDatesInArray,
-} from '../common/storageService.js';
-import { ServiceFactory } from '../common/serviceFactory.js';
 
 /**
  * API呼び出しをシミュレートする遅延
@@ -31,6 +23,8 @@ const API_DELAY = 400;
  * 取引サービスクラス
  */
 export class TransactionService {
+  private baseUrl = 'http://localhost:3001/api';
+
   /**
    * 取引作成
    */
@@ -40,29 +34,24 @@ export class TransactionService {
   ): Promise<Transaction> {
     await this.simulateApiDelay();
 
-    // 口座の存在確認
-    await this.validateAccounts(transactionData);
+    const response = await fetch(`${this.baseUrl}/transactions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        ...transactionData,
+        createdBy,
+      }),
+    });
 
-    const transactions = reviveDatesInArray(
-      getStorageData<Transaction>('mockTransactions')
-    );
+    const result = await response.json();
 
-    const newTransaction: Transaction = {
-      transactionId: generateId('TXN'),
-      type: transactionData.type,
-      sourceAccountId: transactionData.sourceAccountId,
-      destinationAccountId: transactionData.destinationAccountId,
-      amount: transactionData.amount,
-      description: transactionData.description,
-      status: TransactionStatus.PENDING_VERIFICATION,
-      createdBy,
-      createdAt: new Date(),
-    };
+    if (!result.success) {
+      throw new Error(result.message || '取引の作成に失敗しました。');
+    }
 
-    transactions.push(newTransaction);
-    setStorageData('mockTransactions', transactions);
-
-    return newTransaction;
+    return this.convertApiTransaction(result.data);
   }
 
   /**
@@ -71,12 +60,14 @@ export class TransactionService {
   async getTransactionsPendingVerification(): Promise<Transaction[]> {
     await this.simulateApiDelay();
 
-    const transactions = reviveDatesInArray(
-      getStorageData<Transaction>('mockTransactions')
-    );
-    return transactions.filter(
-      t => t.status === TransactionStatus.PENDING_VERIFICATION
-    );
+    const response = await fetch(`${this.baseUrl}/transactions/pending`);
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || 'データの取得に失敗しました。');
+    }
+
+    return result.data.map(this.convertApiTransaction);
   }
 
   /**
@@ -88,82 +79,22 @@ export class TransactionService {
   ): Promise<BaseApiResponse> {
     await this.simulateApiDelay();
 
-    const transactions = reviveDatesInArray(
-      getStorageData<Transaction>('mockTransactions')
-    );
-    const transactionIndex = transactions.findIndex(
-      t => t.transactionId === transactionId
-    );
-
-    if (transactionIndex === -1) {
-      return {
-        success: false,
-        message: '取引が見つかりません。',
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    const transaction = transactions[transactionIndex];
-
-    // 自己検証防止
-    if (transaction.createdBy === verification.verifiedBy) {
-      return {
-        success: false,
-        message: '自分が作成した取引は検証できません。',
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    // 状態更新
-    let newStatus: TransactionStatus;
-    let actionMessage: string;
-    switch (verification.action) {
-      case 'approve':
-        newStatus = TransactionStatus.VERIFICATION_COMPLETE;
-        actionMessage = '取引が承認されました。';
-        break;
-      case 'hold':
-        newStatus = TransactionStatus.ON_HOLD;
-        actionMessage = '取引が保留されました。';
-        break;
-      case 'return':
-        newStatus = TransactionStatus.RETURNED_FOR_CORRECTION;
-        actionMessage = '取引が差し戻されました。';
-        break;
-      default:
-        return {
-          success: false,
-          message: '無効な検証アクションです。',
-          timestamp: new Date().toISOString(),
-        };
-    }
-
-    // ワークフローサービスを使用して状態変更を処理
-    const workflowService = ServiceFactory.getInstance().getWorkflowService();
-    const statusChangeResult = await workflowService.processStatusChange(
-      transactionId,
-      newStatus,
-      verification.verifiedBy,
-      verification.comments
+    const response = await fetch(
+      `${this.baseUrl}/transactions/${transactionId}/verify`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(verification),
+      }
     );
 
-    if (!statusChangeResult.success) {
-      return statusChangeResult;
-    }
-
-    // 取引データを更新
-    transactions[transactionIndex] = {
-      ...transaction,
-      status: newStatus,
-      verifiedBy: verification.verifiedBy,
-      verifiedAt: new Date(),
-    };
-
-    setStorageData('mockTransactions', transactions);
+    const result = await response.json();
 
     return {
-      success: true,
-      message: actionMessage,
+      success: result.success,
+      message: result.message,
       timestamp: new Date().toISOString(),
     };
   }
@@ -174,12 +105,14 @@ export class TransactionService {
   async getTransactionsReadyForConfirmation(): Promise<Transaction[]> {
     await this.simulateApiDelay();
 
-    const transactions = reviveDatesInArray(
-      getStorageData<Transaction>('mockTransactions')
-    );
-    return transactions.filter(
-      t => t.status === TransactionStatus.VERIFICATION_COMPLETE
-    );
+    const response = await fetch(`${this.baseUrl}/transactions/ready`);
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || 'データの取得に失敗しました。');
+    }
+
+    return result.data.map(this.convertApiTransaction);
   }
 
   /**
@@ -191,186 +124,25 @@ export class TransactionService {
   ): Promise<TransactionResult> {
     await this.simulateApiDelay();
 
-    const transactions = reviveDatesInArray(
-      getStorageData<Transaction>('mockTransactions')
-    );
-    const transactionIndex = transactions.findIndex(
-      t => t.transactionId === transactionId
-    );
-
-    if (transactionIndex === -1) {
-      return {
-        transactionId,
-        success: false,
-        message: '取引が見つかりません。',
-      };
-    }
-
-    const transaction = transactions[transactionIndex];
-
-    if (transaction.status !== TransactionStatus.VERIFICATION_COMPLETE) {
-      return {
-        transactionId,
-        success: false,
-        message: '取引が確定可能な状態ではありません。',
-      };
-    }
-
-    try {
-      // 残高更新
-      const newBalances = await this.updateAccountBalances(transaction);
-
-      // 取引状態更新
-      transactions[transactionIndex] = {
-        ...transaction,
-        status: TransactionStatus.CONFIRMED,
-        confirmedBy,
-        confirmedAt: new Date(),
-      };
-
-      setStorageData('mockTransactions', transactions);
-
-      return {
-        transactionId,
-        success: true,
-        newBalance: newBalances,
-        message: '取引が正常に確定されました。',
-      };
-    } catch (error) {
-      return {
-        transactionId,
-        success: false,
-        message: `取引確定中にエラーが発生しました: ${error}`,
-      };
-    }
-  }
-
-  /**
-   * 取引状態変更（汎用）
-   */
-  async changeTransactionStatus(
-    transactionId: string,
-    newStatus: TransactionStatus,
-    userId: string,
-    comments?: string
-  ): Promise<BaseApiResponse> {
-    await this.simulateApiDelay();
-
-    const transactions = reviveDatesInArray(
-      getStorageData<Transaction>('mockTransactions')
-    );
-    const transactionIndex = transactions.findIndex(
-      t => t.transactionId === transactionId
-    );
-
-    if (transactionIndex === -1) {
-      return {
-        success: false,
-        message: '取引が見つかりません。',
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    const transaction = transactions[transactionIndex];
-
-    // ワークフローサービスを使用して状態変更を検証・処理
-    const workflowService = ServiceFactory.getInstance().getWorkflowService();
-
-    // 状態遷移の検証
-    const isValidTransition =
-      await workflowService.validateTransactionTransition(
-        transactionId,
-        newStatus,
-        userId
-      );
-
-    if (!isValidTransition) {
-      return {
-        success: false,
-        message: '無効な状態遷移です。',
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    // 自己検証防止（検証系の状態変更の場合）
-    if (this.isVerificationStatus(newStatus)) {
-      const canVerify = await workflowService.enforceDoubleCheckRule(
-        transactionId,
-        userId
-      );
-
-      if (!canVerify) {
-        return {
-          success: false,
-          message: '自分が作成した取引は検証できません。',
-          timestamp: new Date().toISOString(),
-        };
+    const response = await fetch(
+      `${this.baseUrl}/transactions/${transactionId}/confirm`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ confirmedBy }),
       }
-    }
-
-    // ワークフロー履歴を記録
-    const statusChangeResult = await workflowService.processStatusChange(
-      transactionId,
-      newStatus,
-      userId,
-      comments
     );
 
-    if (!statusChangeResult.success) {
-      return statusChangeResult;
-    }
-
-    // 取引データを更新
-    const updatedTransaction = { ...transaction, status: newStatus };
-
-    // 状態に応じて追加フィールドを更新
-    if (this.isVerificationStatus(newStatus)) {
-      updatedTransaction.verifiedBy = userId;
-      updatedTransaction.verifiedAt = new Date();
-    } else if (newStatus === TransactionStatus.CONFIRMED) {
-      updatedTransaction.confirmedBy = userId;
-      updatedTransaction.confirmedAt = new Date();
-    }
-
-    transactions[transactionIndex] = updatedTransaction;
-    setStorageData('mockTransactions', transactions);
+    const result = await response.json();
 
     return {
-      success: true,
-      message: this.getStatusChangeMessage(newStatus),
-      timestamp: new Date().toISOString(),
+      transactionId,
+      success: result.success,
+      newBalance: result.newBalance,
+      message: result.message,
     };
-  }
-
-  /**
-   * 検証系の状態かどうかを判定
-   */
-  private isVerificationStatus(status: TransactionStatus): boolean {
-    return [
-      TransactionStatus.VERIFICATION_COMPLETE,
-      TransactionStatus.ON_HOLD,
-      TransactionStatus.RETURNED_FOR_CORRECTION,
-    ].includes(status);
-  }
-
-  /**
-   * 状態変更メッセージを取得
-   */
-  private getStatusChangeMessage(status: TransactionStatus): string {
-    switch (status) {
-      case TransactionStatus.VERIFICATION_COMPLETE:
-        return '取引が承認されました。';
-      case TransactionStatus.ON_HOLD:
-        return '取引が保留されました。';
-      case TransactionStatus.RETURNED_FOR_CORRECTION:
-        return '取引が差し戻されました。';
-      case TransactionStatus.CONFIRMED:
-        return '取引が確定されました。';
-      case TransactionStatus.CANCELLED:
-        return '取引が取消されました。';
-      default:
-        return '取引状態が変更されました。';
-    }
   }
 
   /**
@@ -379,48 +151,21 @@ export class TransactionService {
   async cancelTransaction(transactionId: string): Promise<BaseApiResponse> {
     await this.simulateApiDelay();
 
-    const transactions = reviveDatesInArray(
-      getStorageData<Transaction>('mockTransactions')
-    );
-    const transactionIndex = transactions.findIndex(
-      t => t.transactionId === transactionId
-    );
-
-    if (transactionIndex === -1) {
-      return {
-        success: false,
-        message: '取引が見つかりません。',
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    const transaction = transactions[transactionIndex];
-
-    // 当日取引のみ取消可能
-    const today = new Date();
-    const transactionDate = new Date(
-      transaction.confirmedAt || transaction.createdAt
+    const response = await fetch(
+      `${this.baseUrl}/transactions/${transactionId}/cancel`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      }
     );
 
-    if (transactionDate.toDateString() !== today.toDateString()) {
-      return {
-        success: false,
-        message: '当日の取引のみ取消可能です。',
-        timestamp: new Date().toISOString(),
-      };
-    }
-
-    if (transaction.status === TransactionStatus.CONFIRMED) {
-      // 残高を元に戻す
-      await this.reverseAccountBalances(transaction);
-    }
-
-    transactions[transactionIndex].status = TransactionStatus.CANCELLED;
-    setStorageData('mockTransactions', transactions);
+    const result = await response.json();
 
     return {
-      success: true,
-      message: '取引が正常に取消されました。',
+      success: result.success,
+      message: result.message,
       timestamp: new Date().toISOString(),
     };
   }
@@ -433,174 +178,122 @@ export class TransactionService {
   ): Promise<Transaction[]> {
     await this.simulateApiDelay();
 
-    let transactions = reviveDatesInArray(
-      getStorageData<Transaction>('mockTransactions')
-    ).filter(t => t.status === TransactionStatus.CONFIRMED);
-
-    // 検索条件を適用
-    if (criteria.transactionId) {
-      transactions = transactions.filter(t =>
-        t.transactionId
-          .toLowerCase()
-          .includes(criteria.transactionId!.toLowerCase())
-      );
-    }
-
-    if (criteria.type) {
-      transactions = transactions.filter(t => t.type === criteria.type);
-    }
-
-    if (criteria.sourceAccountId) {
-      transactions = transactions.filter(
-        t => t.sourceAccountId === criteria.sourceAccountId
-      );
-    }
-
-    if (criteria.destinationAccountId) {
-      transactions = transactions.filter(
-        t => t.destinationAccountId === criteria.destinationAccountId
-      );
-    }
-
-    if (criteria.createdBy) {
-      transactions = transactions.filter(
-        t => t.createdBy === criteria.createdBy
-      );
-    }
+    const params = new URLSearchParams();
 
     if (criteria.dateFrom) {
-      transactions = transactions.filter(
-        t => new Date(t.confirmedAt || t.createdAt) >= criteria.dateFrom!
-      );
+      params.append('dateFrom', criteria.dateFrom.toISOString());
     }
-
     if (criteria.dateTo) {
-      transactions = transactions.filter(
-        t => new Date(t.confirmedAt || t.createdAt) <= criteria.dateTo!
-      );
+      params.append('dateTo', criteria.dateTo.toISOString());
+    }
+    if (criteria.type) {
+      params.append('type', criteria.type);
+    }
+    if (criteria.sourceAccountId) {
+      params.append('sourceAccountId', criteria.sourceAccountId);
+    }
+    if (criteria.destinationAccountId) {
+      params.append('destinationAccountId', criteria.destinationAccountId);
     }
 
-    if (criteria.amountMin !== undefined) {
-      transactions = transactions.filter(t => t.amount >= criteria.amountMin!);
-    }
-
-    if (criteria.amountMax !== undefined) {
-      transactions = transactions.filter(t => t.amount <= criteria.amountMax!);
-    }
-
-    // ページネーション
-    const offset = criteria.offset || 0;
-    const limit = criteria.limit || 50;
-
-    return transactions.slice(offset, offset + limit);
-  }
-
-  /**
-   * 口座の存在確認
-   */
-  private async validateAccounts(
-    transactionData: TransactionInput
-  ): Promise<void> {
-    // AccountServiceを使用して口座データを取得
-    const accountService = ServiceFactory.getInstance().getAccountService();
-    const accounts = await accountService.listAccounts();
-
-    if (transactionData.sourceAccountId) {
-      const sourceAccount = accounts.find(
-        (a: Account) => a.accountId === transactionData.sourceAccountId
-      );
-      if (!sourceAccount || sourceAccount.status !== AccountStatus.ACTIVE) {
-        throw new Error('振込元口座が見つからないか、無効な状態です。');
-      }
-    }
-
-    if (transactionData.destinationAccountId) {
-      const destAccount = accounts.find(
-        (a: Account) => a.accountId === transactionData.destinationAccountId
-      );
-      if (!destAccount || destAccount.status !== AccountStatus.ACTIVE) {
-        throw new Error('振込先口座が見つからないか、無効な状態です。');
-      }
-    }
-  }
-
-  /**
-   * 口座残高更新
-   */
-  private async updateAccountBalances(
-    transaction: Transaction
-  ): Promise<Record<string, number>> {
-    const accounts = reviveDatesInArray(
-      getStorageData<Account>('mockAccounts')
+    const response = await fetch(
+      `${this.baseUrl}/transactions/history?${params}`
     );
-    const newBalances: Record<string, number> = {};
+    const result = await response.json();
 
-    // 振込元口座から減額
-    if (transaction.sourceAccountId) {
-      const sourceIndex = accounts.findIndex(
-        a => a.accountId === transaction.sourceAccountId
-      );
-      if (sourceIndex !== -1) {
-        if (accounts[sourceIndex].balance < transaction.amount) {
-          throw new Error('残高不足です。');
-        }
-        accounts[sourceIndex].balance -= transaction.amount;
-        accounts[sourceIndex].updatedAt = new Date();
-        newBalances[transaction.sourceAccountId] =
-          accounts[sourceIndex].balance;
-      }
+    if (!result.success) {
+      throw new Error(result.message || 'データの取得に失敗しました。');
     }
 
-    // 振込先口座に加算
-    if (transaction.destinationAccountId) {
-      const destIndex = accounts.findIndex(
-        a => a.accountId === transaction.destinationAccountId
-      );
-      if (destIndex !== -1) {
-        accounts[destIndex].balance += transaction.amount;
-        accounts[destIndex].updatedAt = new Date();
-        newBalances[transaction.destinationAccountId] =
-          accounts[destIndex].balance;
-      }
-    }
-
-    setStorageData('mockAccounts', accounts);
-    return newBalances;
+    return result.data.map(this.convertApiTransaction);
   }
 
   /**
-   * 口座残高を元に戻す
+   * 取引状態変更
    */
-  private async reverseAccountBalances(
-    transaction: Transaction
-  ): Promise<void> {
-    const accounts = reviveDatesInArray(
-      getStorageData<Account>('mockAccounts')
-    );
+  async changeTransactionStatus(
+    transactionId: string,
+    newStatus: string,
+    userId: string,
+    comments?: string
+  ): Promise<BaseApiResponse> {
+    await this.simulateApiDelay();
 
-    // 振込元口座に加算（元に戻す）
-    if (transaction.sourceAccountId) {
-      const sourceIndex = accounts.findIndex(
-        a => a.accountId === transaction.sourceAccountId
-      );
-      if (sourceIndex !== -1) {
-        accounts[sourceIndex].balance += transaction.amount;
-        accounts[sourceIndex].updatedAt = new Date();
-      }
+    // 状態に応じて適切なAPIエンドポイントを呼び出し
+    switch (newStatus) {
+      case 'verification_complete':
+      case 'on_hold':
+      case 'returned_for_correction':
+        // 検証系の状態変更
+        return this.verifyTransaction(transactionId, {
+          action: this.mapStatusToAction(newStatus) as
+            | 'approve'
+            | 'hold'
+            | 'return',
+          verifiedBy: userId,
+          comments,
+        });
+
+      case 'confirmed':
+        // 取引確定
+        const confirmResult = await this.confirmTransaction(
+          transactionId,
+          userId
+        );
+        return {
+          success: confirmResult.success,
+          message: confirmResult.message,
+          timestamp: new Date().toISOString(),
+        };
+
+      case 'cancelled':
+        // 取引取消
+        return this.cancelTransaction(transactionId);
+
+      default:
+        return {
+          success: false,
+          message: `未対応の状態変更です: ${newStatus}`,
+          timestamp: new Date().toISOString(),
+        };
     }
+  }
 
-    // 振込先口座から減額（元に戻す）
-    if (transaction.destinationAccountId) {
-      const destIndex = accounts.findIndex(
-        a => a.accountId === transaction.destinationAccountId
-      );
-      if (destIndex !== -1) {
-        accounts[destIndex].balance -= transaction.amount;
-        accounts[destIndex].updatedAt = new Date();
-      }
-    }
+  /**
+   * 状態を検証アクションにマッピング
+   */
+  private mapStatusToAction(status: string): 'approve' | 'hold' | 'return' {
+    const statusActionMap: Record<string, 'approve' | 'hold' | 'return'> = {
+      verification_complete: 'approve',
+      on_hold: 'hold',
+      returned_for_correction: 'return',
+    };
+    return statusActionMap[status] || 'approve';
+  }
 
-    setStorageData('mockAccounts', accounts);
+  /**
+   * APIレスポンスをフロントエンド用のTransaction型に変換
+   */
+  private convertApiTransaction(apiTransaction: any): Transaction {
+    return {
+      transactionId: apiTransaction.transactionId,
+      type: apiTransaction.transactionType.toLowerCase(),
+      sourceAccountId: apiTransaction.sourceAccountId,
+      destinationAccountId: apiTransaction.destinationAccountId,
+      amount: parseFloat(apiTransaction.amount),
+      description: apiTransaction.description,
+      status: apiTransaction.status.toLowerCase(),
+      createdBy: apiTransaction.createdBy,
+      verifiedBy: apiTransaction.verifiedBy,
+      confirmedBy: apiTransaction.confirmedBy,
+      createdAt: new Date(apiTransaction.createdAt),
+      verifiedAt: apiTransaction.verifiedAt
+        ? new Date(apiTransaction.verifiedAt)
+        : undefined,
+      confirmedAt: apiTransaction.confirmedAt
+        ? new Date(apiTransaction.confirmedAt)
+        : undefined,
+    };
   }
 
   /**
