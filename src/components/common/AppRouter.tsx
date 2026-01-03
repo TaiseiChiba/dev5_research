@@ -20,6 +20,7 @@ import AccountEdit from '../account/AccountEdit.js';
 import AccountCreate from '../account/AccountCreate.js';
 import TransactionInput from '../transaction/TransactionInput.js';
 import TransactionConfirmation from '../transaction/TransactionConfirmation.js';
+import TransactionConfirmationScreen from '../transaction/TransactionConfirmationScreen.js';
 import { TransactionVerification } from '../transaction/TransactionVerification.js';
 import { NotFoundError, UnauthorizedError, ServerError } from './ErrorPages.js';
 import { UserSession } from '../../types/auth.js';
@@ -107,6 +108,14 @@ const AppRouter: React.FC<AppRouterProps> = ({
             <Route
               path="verification"
               element={<TransactionVerification session={session!} />}
+            />
+            <Route
+              path="final-confirmation"
+              element={
+                <ProtectedRoute adminOnly>
+                  <TransactionConfirmationScreen session={session!} />
+                </ProtectedRoute>
+              }
             />
           </Route>
 
