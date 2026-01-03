@@ -209,6 +209,85 @@ export class TransactionService {
   }
 
   /**
+   * 取引履歴取得（ページネーション付き）
+   */
+  async getTransactionHistoryPaginated(
+    criteria: TransactionSearchCriteria,
+    pagination: { page: number; limit: number }
+  ): Promise<{
+    data: Transaction[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    await this.simulateApiDelay();
+
+    const params = new URLSearchParams();
+
+    // 検索条件
+    if (criteria.dateFrom) {
+      params.append('dateFrom', criteria.dateFrom.toISOString());
+    }
+    if (criteria.dateTo) {
+      params.append('dateTo', criteria.dateTo.toISOString());
+    }
+    if (criteria.type) {
+      params.append('type', criteria.type);
+    }
+    if (criteria.sourceAccountId) {
+      params.append('sourceAccountId', criteria.sourceAccountId);
+    }
+    if (criteria.destinationAccountId) {
+      params.append('destinationAccountId', criteria.destinationAccountId);
+    }
+    if (criteria.customerId) {
+      params.append('customerId', criteria.customerId);
+    }
+
+    // ページネーション
+    params.append('page', pagination.page.toString());
+    params.append('limit', pagination.limit.toString());
+
+    const response = await fetch(
+      `${this.baseUrl}/transactions/history?${params}`
+    );
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || 'データの取得に失敗しました。');
+    }
+
+    return {
+      data: result.data.map(this.convertApiTransaction),
+      total: result.total || result.data.length,
+      page: pagination.page,
+      limit: pagination.limit,
+      totalPages: Math.ceil(
+        (result.total || result.data.length) / pagination.limit
+      ),
+    };
+  }
+
+  /**
+   * 取引詳細取得
+   */
+  async getTransactionDetail(transactionId: string): Promise<Transaction> {
+    await this.simulateApiDelay();
+
+    const response = await fetch(
+      `${this.baseUrl}/transactions/${transactionId}`
+    );
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.message || '取引詳細の取得に失敗しました。');
+    }
+
+    return this.convertApiTransaction(result.data);
+  }
+
+  /**
    * 取引状態変更
    */
   async changeTransactionStatus(
@@ -277,12 +356,16 @@ export class TransactionService {
   private convertApiTransaction(apiTransaction: any): Transaction {
     return {
       transactionId: apiTransaction.transactionId,
-      type: apiTransaction.transactionType.toLowerCase(),
+      type: (
+        apiTransaction.transactionType ||
+        apiTransaction.type ||
+        'transfer'
+      ).toLowerCase(),
       sourceAccountId: apiTransaction.sourceAccountId,
       destinationAccountId: apiTransaction.destinationAccountId,
       amount: parseFloat(apiTransaction.amount),
       description: apiTransaction.description,
-      status: apiTransaction.status.toLowerCase(),
+      status: (apiTransaction.status || 'pending_verification').toLowerCase(),
       createdBy: apiTransaction.createdBy,
       verifiedBy: apiTransaction.verifiedBy,
       confirmedBy: apiTransaction.confirmedBy,
