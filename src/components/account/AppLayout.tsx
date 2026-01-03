@@ -24,6 +24,7 @@ import {
   PersonOutline,
   AdminPanelSettings,
   AccountCircleOutlined,
+  MenuOutlined,
 } from '@mui/icons-material';
 import UserSwitchModal from '../auth/UserSwitchModal.js';
 import ResponsiveLayout from '../shared/ResponsiveLayout.js';
@@ -49,6 +50,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(
     null
   );
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [desktopNavOpen, setDesktopNavOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -74,6 +77,18 @@ const AppLayout: React.FC<AppLayoutProps> = ({
     setUserMenuAnchor(null);
   };
 
+  const handleMobileNavToggle = () => {
+    if (isMobile) {
+      setMobileNavOpen(!mobileNavOpen);
+    } else {
+      setDesktopNavOpen(!desktopNavOpen);
+    }
+  };
+
+  const handleDesktopNavToggle = () => {
+    setDesktopNavOpen(!desktopNavOpen);
+  };
+
   const roleText =
     session.userRole === UserRole.ADMINISTRATOR ? '管理者' : '一般行員';
   const RoleIcon =
@@ -93,6 +108,22 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         }}
       >
         <Toolbar>
+          {/* ハンバーガーメニューボタン */}
+          <IconButton
+            color="inherit"
+            aria-label="メニューを開く"
+            onClick={handleMobileNavToggle}
+            edge="start"
+            sx={{
+              mr: 2,
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              },
+            }}
+          >
+            <MenuOutlined />
+          </IconButton>
+
           <Typography
             variant={isMobile ? 'subtitle1' : 'h6'}
             component="div"
@@ -185,7 +216,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       <Box sx={{ mt: 8 }}>
         {' '}
         {/* AppBarの高さ分のマージン */}
-        <ResponsiveLayout session={session}>
+        <ResponsiveLayout
+          session={session}
+          mobileNavOpen={mobileNavOpen}
+          onMobileNavClose={() => setMobileNavOpen(false)}
+          desktopNavOpen={desktopNavOpen}
+          onDesktopNavToggle={handleDesktopNavToggle}
+        >
           <Outlet />
         </ResponsiveLayout>
       </Box>

@@ -297,13 +297,24 @@ const MainNavigation: React.FC<MainNavigationProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           borderBottom: `1px solid ${theme.palette.divider}`,
+          backgroundColor: theme.palette.primary.main,
+          color: theme.palette.primary.contrastText,
         }}
       >
-        <Typography variant="h6" noWrap>
+        <Typography variant="h6" noWrap sx={{ fontWeight: 600 }}>
           メニュー
         </Typography>
         {variant === 'temporary' && (
-          <IconButton onClick={onClose} size="small">
+          <IconButton
+            onClick={onClose}
+            size="small"
+            sx={{
+              color: 'inherit',
+              '&:hover': {
+                backgroundColor: 'rgba(255, 255, 255, 0.1)',
+              },
+            }}
+          >
             <CloseOutlined />
           </IconButton>
         )}
@@ -349,7 +360,14 @@ const MainNavigation: React.FC<MainNavigationProps> = ({
         '& .MuiDrawer-paper': {
           width: DRAWER_WIDTH,
           boxSizing: 'border-box',
+          transition: theme.transitions.create(['transform'], {
+            easing: theme.transitions.easing.sharp,
+            duration: theme.transitions.duration.enteringScreen,
+          }),
         },
+      }}
+      ModalProps={{
+        keepMounted: true, // モバイルでのパフォーマンス向上
       }}
     >
       {drawerContent}
