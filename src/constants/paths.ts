@@ -72,20 +72,13 @@ export const generatePath = {
 export const PATH_HIERARCHY = {
   [PATHS.DASHBOARD]: { label: 'ダッシュボード', parent: null },
 
-  // 顧客管理階層
-  [PATHS.CUSTOMERS]: { label: '顧客管理', parent: PATHS.DASHBOARD },
-  [PATHS.CUSTOMER_LIST]: { label: '顧客一覧', parent: PATHS.CUSTOMERS },
-  [PATHS.CUSTOMER_CREATE]: {
-    label: '新規顧客登録',
-    parent: PATHS.CUSTOMER_LIST,
-  },
+  // 顧客管理階層 - ダッシュボードから直接アクセス
+  [PATHS.CUSTOMER_LIST]: { label: '顧客一覧', parent: PATHS.DASHBOARD },
   [PATHS.CUSTOMER_DETAIL]: { label: '顧客詳細', parent: PATHS.CUSTOMER_LIST },
   [PATHS.CUSTOMER_EDIT]: { label: '顧客編集', parent: PATHS.CUSTOMER_DETAIL },
 
-  // 口座管理階層
-  [PATHS.ACCOUNTS]: { label: '口座管理', parent: PATHS.DASHBOARD },
-  [PATHS.ACCOUNT_LIST]: { label: '口座一覧', parent: PATHS.ACCOUNTS },
-  [PATHS.ACCOUNT_CREATE]: { label: '新規口座開設', parent: PATHS.ACCOUNT_LIST },
+  // 口座管理階層 - ダッシュボードから直接アクセス
+  [PATHS.ACCOUNT_LIST]: { label: '口座一覧', parent: PATHS.DASHBOARD },
   [PATHS.ACCOUNT_DETAIL]: { label: '口座詳細', parent: PATHS.ACCOUNT_LIST },
   [PATHS.ACCOUNT_EDIT]: { label: '口座編集', parent: PATHS.ACCOUNT_DETAIL },
   [PATHS.ACCOUNT_BY_CUSTOMER]: {
@@ -93,28 +86,19 @@ export const PATH_HIERARCHY = {
     parent: PATHS.CUSTOMER_DETAIL,
   },
 
-  // 取引管理階層
-  [PATHS.TRANSACTIONS]: { label: '取引管理', parent: PATHS.DASHBOARD },
-  [PATHS.TRANSACTION_INPUT]: { label: '取引入力', parent: PATHS.TRANSACTIONS },
+  // 取引管理階層 - ダッシュボードから直接アクセス
+  [PATHS.TRANSACTION_INPUT]: { label: '取引入力', parent: PATHS.DASHBOARD },
   [PATHS.TRANSACTION_VERIFICATION]: {
     label: '取引検証',
-    parent: PATHS.TRANSACTIONS,
-  },
-  [PATHS.TRANSACTION_CONFIRMATION]: {
-    label: '取引確認',
-    parent: PATHS.TRANSACTIONS,
+    parent: PATHS.DASHBOARD,
   },
   [PATHS.TRANSACTION_FINAL_CONFIRMATION]: {
     label: '取引確定',
-    parent: PATHS.TRANSACTIONS,
-  },
-  [PATHS.TRANSACTION_DETAIL]: {
-    label: '取引詳細',
-    parent: PATHS.TRANSACTION_HISTORY,
+    parent: PATHS.DASHBOARD,
   },
   [PATHS.TRANSACTION_HISTORY]: {
     label: '取引履歴',
-    parent: PATHS.TRANSACTIONS,
+    parent: PATHS.DASHBOARD,
   },
 
   // ワークフロー管理階層
