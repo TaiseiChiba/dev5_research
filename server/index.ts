@@ -4,6 +4,7 @@ import cors from 'cors';
 import authRoutes from './routes/auth.js';
 import custmersRoutes from './routes/customers.js';
 import accountsRoutes from './routes/accounts.js';
+import transactionsRoutes from './routes/transactions.js';
 
 const app = express();
 const PORT = process.env.API_PORT || 3001;
@@ -31,6 +32,7 @@ console.log('🔧 Registering auth routes...');
 app.use('/api/auth', authRoutes);
 app.use('/api/customers', custmersRoutes);
 app.use('/api/accounts', accountsRoutes);
+app.use('/api/transactions', transactionsRoutes);
 console.log('✅ Auth routes registered');
 
 // ヘルスチェック
