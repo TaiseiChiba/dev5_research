@@ -4,7 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, useLocation } from 'react-router-dom';
 import AppRouter from './components/common/AppRouter.js';
 import {
   MessageProvider,
@@ -13,6 +13,20 @@ import {
 import { NavigationProvider } from './contexts/NavigationContext.js';
 import { ServiceFactory } from './services/common/serviceFactory.js';
 import { UserSession } from './types/auth.js';
+
+/**
+ * スクロール位置リセットコンポーネント
+ * 画面遷移時に自動的にページトップにスクロールする
+ */
+const ScrollToTop: React.FC = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [location.pathname]);
+
+  return null;
+};
 
 const AppContent: React.FC = () => {
   const [currentSession, setCurrentSession] = useState<UserSession | null>(
@@ -88,6 +102,7 @@ const AppContent: React.FC = () => {
 
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <NavigationProvider>
         <AppRouter
           session={currentSession}

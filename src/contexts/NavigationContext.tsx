@@ -127,6 +127,11 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
         replace: options?.replace,
         state: { navigationData: data },
       });
+
+      // 画面遷移後にスクロール位置をトップにリセット
+      setTimeout(() => {
+        window.scrollTo(0, 0);
+      }, 0);
     },
     [navigate, currentPath, breadcrumbs, maxHistorySize]
   );
@@ -184,14 +189,27 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
           state: { navigationData: previousItem.data },
         });
 
+        // 画面遷移後にスクロール位置をトップにリセット
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+        }, 0);
+
         // 履歴から削除
         setNavigationHistory(prev => prev.slice(1));
       } else if (fallbackPath) {
         // フォールバックパスに移動
         navigate(fallbackPath);
+        // 画面遷移後にスクロール位置をトップにリセット
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+        }, 0);
       } else if (previousPathRef.current) {
         // 前回のパスに戻る
         navigate(previousPathRef.current);
+        // 画面遷移後にスクロール位置をトップにリセット
+        setTimeout(() => {
+          window.scrollTo(0, 0);
+        }, 0);
       } else {
         // ブラウザの戻るボタンを使用
         window.history.back();
