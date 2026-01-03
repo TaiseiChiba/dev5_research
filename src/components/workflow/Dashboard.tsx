@@ -2,7 +2,7 @@
  * ダッシュボードコンポーネント
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -15,6 +15,8 @@ import {
   ListItemText,
   Divider,
   Paper,
+  Collapse,
+  ListItemButton,
 } from '@mui/material';
 import {
   AccountBalanceOutlined,
@@ -22,6 +24,9 @@ import {
   ReceiptLongOutlined,
   HistoryOutlined,
   SecurityOutlined,
+  ExpandLess,
+  ExpandMore,
+  ChevronRight,
 } from '@mui/icons-material';
 import { UserSession, UserRole } from '../../types/auth.js';
 import { PATHS } from '../../constants/paths.js';
@@ -32,6 +37,13 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ session }) => {
   const navigate = useNavigate();
+  const [expandedItems, setExpandedItems] = useState<number[]>([]);
+
+  const handleExpandClick = (index: number) => {
+    setExpandedItems(prev =>
+      prev.includes(index) ? prev.filter(i => i !== index) : [...prev, index]
+    );
+  };
 
   const features = [
     {
@@ -57,6 +69,27 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
       title: '取引処理ワークフロー',
       description: '多段階承認による取引処理システム',
       action: () => navigate(PATHS.TRANSACTION_INPUT),
+      subItems: [
+        {
+          title: '取引入力',
+          description: '新規取引の入力',
+          action: () => navigate(PATHS.TRANSACTION_INPUT),
+        },
+        {
+          title: '取引検証',
+          description: '取引のダブルチェック',
+          action: () => navigate(PATHS.TRANSACTION_VERIFICATION),
+        },
+        ...(session.userRole === UserRole.ADMINISTRATOR
+          ? [
+              {
+                title: '取引確定',
+                description: '検証済み取引の確定処理',
+                action: () => navigate(PATHS.TRANSACTION_FINAL_CONFIRMATION),
+              },
+            ]
+          : []),
+      ],
     },
     {
       icon: <HistoryOutlined />,
@@ -101,21 +134,58 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
         <List>
           {features.map((feature, index) => (
             <React.Fragment key={index}>
-              <ListItem
-                onClick={feature.action || undefined}
-                sx={{
-                  cursor: feature.action ? 'pointer' : 'default',
-                  '&:hover': feature.action
-                    ? { backgroundColor: 'action.hover' }
-                    : {},
-                }}
-              >
-                <ListItemIcon>{feature.icon}</ListItemIcon>
-                <ListItemText
-                  primary={feature.title}
-                  secondary={feature.description}
-                />
+              <ListItem disablePadding>
+                <ListItemButton
+                  onClick={
+                    feature.subItems
+                      ? () => handleExpandClick(index)
+                      : feature.action || undefined
+                  }
+                  sx={{
+                    cursor:
+                      feature.action || feature.subItems
+                        ? 'pointer'
+                        : 'default',
+                  }}
+                >
+                  <ListItemIcon>{feature.icon}</ListItemIcon>
+                  <ListItemText
+                    primary={feature.title}
+                    secondary={feature.description}
+                  />
+                  {feature.subItems &&
+                    (expandedItems.includes(index) ? (
+                      <ExpandLess />
+                    ) : (
+                      <ExpandMore />
+                    ))}
+                </ListItemButton>
               </ListItem>
+
+              {feature.subItems && (
+                <Collapse
+                  in={expandedItems.includes(index)}
+                  timeout="auto"
+                  unmountOnExit
+                >
+                  <List component="div" disablePadding>
+                    {feature.subItems.map((subItem, subIndex) => (
+                      <ListItem key={subIndex} disablePadding>
+                        <ListItemButton sx={{ pl: 4 }} onClick={subItem.action}>
+                          <ListItemIcon>
+                            <ChevronRight />
+                          </ListItemIcon>
+                          <ListItemText
+                            primary={subItem.title}
+                            secondary={subItem.description}
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                    ))}
+                  </List>
+                </Collapse>
+              )}
+
               {index < features.length - 1 && <Divider />}
             </React.Fragment>
           ))}
