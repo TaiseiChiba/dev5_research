@@ -1,220 +1,215 @@
 /**
  * パンくずナビゲーションコンポーネント
  *
- * 要件 10.1, 10.2 に対応したパンくずナビゲーション機能
+ * 現在位置の表示と上位階層への移動機能
+ * 要件: 10.1, 10.2 - 画面遷移とナビゲーション
  */
 
 import React from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { Breadcrumbs, Link, Typography, Box, useTheme } from '@mui/material';
+import {
+  Breadcrumbs,
+  Link,
+  Typography,
+  Box,
+  IconButton,
+  Chip,
+} from '@mui/material';
 import {
   NavigateNext as NavigateNextIcon,
   Home as HomeIcon,
+  ArrowBack as ArrowBackIcon,
 } from '@mui/icons-material';
+import {
+  useNavigation,
+  useBackButton,
+} from '../../contexts/NavigationContext.js';
+import { BreadcrumbItem } from '../../types/routing.js';
 import { PATHS, PATH_HIERARCHY } from '../../constants/paths.js';
 
-interface BreadcrumbItem {
-  label: string;
-  path?: string;
-  isActive?: boolean;
-}
-
 interface BreadcrumbNavigationProps {
-  customItems?: BreadcrumbItem[];
+  /**
+   * 手動でパンくずを指定する場合
+   */
+  customBreadcrumbs?: BreadcrumbItem[];
+
+  /**
+   * 戻るボタンを表示するか
+   */
+  showBackButton?: boolean;
+
+  /**
+   * 戻るボタンのフォールバックパス
+   */
+  backButtonFallback?: string;
+
+  /**
+   * ホームボタンを表示するか
+   */
+  showHomeButton?: boolean;
+
+  /**
+   * 最大表示階層数
+   */
   maxItems?: number;
 }
 
 const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
-  customItems,
-  maxItems = 8,
+  customBreadcrumbs,
+  showBackButton = true,
+  backButtonFallback = PATHS.DASHBOARD,
+  showHomeButton = true,
+  maxItems = 5,
 }) => {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const params = useParams();
-  const theme = useTheme();
+  const { currentPath, breadcrumbs, navigateWithData } = useNavigation();
+  const { goBack, canGoBack } = useBackButton(backButtonFallback);
 
-  const generateBreadcrumbs = (): BreadcrumbItem[] => {
-    if (customItems) {
-      return customItems;
+  // パンくずの決定（カスタム > コンテキスト > 自動生成）
+  const effectiveBreadcrumbs = React.useMemo(() => {
+    if (customBreadcrumbs) {
+      return customBreadcrumbs;
     }
 
-    let currentPath = location.pathname;
+    if (breadcrumbs.length > 0) {
+      return breadcrumbs;
+    }
 
-    // 動的パラメータを含むパスを正規化
-    const normalizedPath = normalizePath(currentPath, params);
+    // パス階層から自動生成
+    return generateBreadcrumbsFromPath(currentPath);
+  }, [customBreadcrumbs, breadcrumbs, currentPath]);
 
-    // パス階層を辿って breadcrumb を構築
-    const buildBreadcrumbChain = (path: string): BreadcrumbItem[] => {
-      const hierarchy = PATH_HIERARCHY[path as keyof typeof PATH_HIERARCHY];
+  // パス階層からパンくずを自動生成
+  function generateBreadcrumbsFromPath(path: string): BreadcrumbItem[] {
+    const items: BreadcrumbItem[] = [];
 
-      if (!hierarchy) {
-        // 階層定義がない場合は、パスから推測
-        return inferBreadcrumbsFromPath(currentPath);
-      }
-
-      const chain: BreadcrumbItem[] = [];
-
-      if (hierarchy.parent) {
-        chain.push(...buildBreadcrumbChain(hierarchy.parent));
-      }
-
-      chain.push({
-        label: hierarchy.label,
-        path: path === currentPath ? undefined : path,
-        isActive: path === currentPath,
+    // ホームを追加
+    if (path !== PATHS.DASHBOARD) {
+      items.push({
+        label: 'ダッシュボード',
+        path: PATHS.DASHBOARD,
       });
+    }
 
-      return chain;
-    };
+    // 現在のパスの階層を辿る
+    let currentHierarchyPath = path;
+    const pathItems: BreadcrumbItem[] = [];
 
-    return buildBreadcrumbChain(normalizedPath);
-  };
+    while (currentHierarchyPath && currentHierarchyPath !== PATHS.DASHBOARD) {
+      const hierarchy =
+        PATH_HIERARCHY[currentHierarchyPath as keyof typeof PATH_HIERARCHY];
 
-  const normalizePath = (
-    path: string,
-    params: Record<string, string | undefined>
-  ): string => {
-    // 動的パラメータを含むパスを正規化
-    if (params.customerId && path.includes(params.customerId)) {
-      if (path.endsWith('/edit')) {
-        return PATHS.CUSTOMER_EDIT;
-      } else if (path.includes('/accounts')) {
-        return PATHS.ACCOUNT_BY_CUSTOMER;
+      if (hierarchy) {
+        pathItems.unshift({
+          label: hierarchy.label,
+          path: currentHierarchyPath,
+          isActive: currentHierarchyPath === path,
+        });
+
+        currentHierarchyPath = hierarchy.parent || '';
       } else {
-        return PATHS.CUSTOMER_DETAIL;
+        break;
       }
     }
 
-    if (params.accountId && path.includes(params.accountId)) {
-      if (path.endsWith('/edit')) {
-        return PATHS.ACCOUNT_EDIT;
-      } else {
-        return PATHS.ACCOUNT_DETAIL;
-      }
+    return [...items, ...pathItems];
+  }
+
+  // パンくずの表示制限
+  const displayBreadcrumbs = React.useMemo(() => {
+    if (effectiveBreadcrumbs.length <= maxItems) {
+      return effectiveBreadcrumbs;
     }
 
-    if (params.transactionId && path.includes(params.transactionId)) {
-      return PATHS.TRANSACTION_DETAIL;
+    // 最初と最後を保持し、中間を省略
+    const first = effectiveBreadcrumbs[0];
+    const last = effectiveBreadcrumbs[effectiveBreadcrumbs.length - 1];
+    const middle = effectiveBreadcrumbs.slice(-maxItems + 2, -1);
+
+    return [first, { label: '...', path: undefined }, ...middle, last];
+  }, [effectiveBreadcrumbs, maxItems]);
+
+  // パンくずクリックハンドラ
+  const handleBreadcrumbClick = (item: BreadcrumbItem) => {
+    if (item.path && !item.isActive) {
+      navigateWithData(item.path);
     }
-
-    return path;
   };
 
-  const inferBreadcrumbsFromPath = (path: string): BreadcrumbItem[] => {
-    const segments = path.split('/').filter(Boolean);
-    const breadcrumbs: BreadcrumbItem[] = [
-      { label: 'ダッシュボード', path: PATHS.DASHBOARD },
-    ];
-
-    let currentPath = '';
-
-    segments.forEach((segment, index) => {
-      currentPath += `/${segment}`;
-      const isLast = index === segments.length - 1;
-
-      let label = segment;
-
-      // セグメントに基づいてラベルを決定
-      switch (segment) {
-        case 'customers':
-          label = '顧客管理';
-          break;
-        case 'accounts':
-          label = '口座管理';
-          break;
-        case 'transactions':
-          label = '取引管理';
-          break;
-        case 'workflow':
-          label = 'ワークフロー';
-          break;
-        case 'settings':
-          label = '設定';
-          break;
-        case 'list':
-          label = '一覧';
-          break;
-        case 'create':
-          label = '新規作成';
-          break;
-        case 'edit':
-          label = '編集';
-          break;
-        case 'history':
-          label = '履歴';
-          break;
-        case 'input':
-          label = '入力';
-          break;
-        case 'verification':
-          label = '検証';
-          break;
-        case 'confirmation':
-          label = '確認';
-          break;
-        case 'final-confirmation':
-          label = '確定';
-          break;
-        case 'pending':
-          label = '検証待ち';
-          break;
-        case 'ready':
-          label = '確定準備完了';
-          break;
-        default:
-          // IDの場合は詳細ページとして扱う
-          if (segment.match(/^[a-zA-Z0-9-_]+$/)) {
-            label = '詳細';
-          }
-      }
-
-      breadcrumbs.push({
-        label,
-        path: isLast ? undefined : currentPath,
-        isActive: isLast,
-      });
-    });
-
-    return breadcrumbs;
+  // 戻るボタンクリックハンドラ
+  const handleBackClick = () => {
+    goBack();
   };
 
-  const handleBreadcrumbClick = (path: string) => {
-    navigate(path);
-  };
-
-  const breadcrumbs = generateBreadcrumbs();
-
-  if (breadcrumbs.length <= 1) {
-    return null; // ダッシュボードのみの場合は表示しない
+  if (displayBreadcrumbs.length === 0) {
+    return null;
   }
 
   return (
-    <Box sx={{ mb: 2 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 1,
+        py: 1,
+        px: 2,
+        backgroundColor: 'background.paper',
+        borderBottom: 1,
+        borderColor: 'divider',
+      }}
+    >
+      {/* 戻るボタン */}
+      {showBackButton && canGoBack && (
+        <IconButton
+          size="small"
+          onClick={handleBackClick}
+          sx={{ mr: 1 }}
+          title="前の画面に戻る"
+        >
+          <ArrowBackIcon fontSize="small" />
+        </IconButton>
+      )}
+
+      {/* ホームボタン */}
+      {showHomeButton && currentPath !== PATHS.DASHBOARD && (
+        <IconButton
+          size="small"
+          onClick={() => navigateWithData(PATHS.DASHBOARD)}
+          sx={{ mr: 1 }}
+          title="ダッシュボードに戻る"
+        >
+          <HomeIcon fontSize="small" />
+        </IconButton>
+      )}
+
+      {/* パンくずナビゲーション */}
       <Breadcrumbs
         separator={<NavigateNextIcon fontSize="small" />}
+        sx={{ flexGrow: 1 }}
         maxItems={maxItems}
-        aria-label="パンくずナビゲーション"
-        sx={{
-          '& .MuiBreadcrumbs-separator': {
-            color: theme.palette.text.secondary,
-          },
-        }}
       >
-        {breadcrumbs.map((item, index) => {
-          const isLast = index === breadcrumbs.length - 1;
+        {displayBreadcrumbs.map((item, index) => {
+          const isLast = index === displayBreadcrumbs.length - 1;
+          const isEllipsis = item.label === '...';
 
-          if (isLast || !item.path) {
+          if (isEllipsis) {
             return (
               <Typography
-                key={index}
-                color="text.primary"
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  fontWeight: isLast ? 600 : 400,
-                }}
+                key={`ellipsis-${index}`}
+                color="text.secondary"
+                variant="body2"
               >
-                {index === 0 && <HomeIcon sx={{ mr: 0.5, fontSize: 16 }} />}
+                ...
+              </Typography>
+            );
+          }
+
+          if (isLast || item.isActive || !item.path) {
+            return (
+              <Typography
+                key={item.path || `active-${index}`}
+                color="text.primary"
+                variant="body2"
+                fontWeight="medium"
+              >
                 {item.label}
               </Typography>
             );
@@ -222,28 +217,33 @@ const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
 
           return (
             <Link
-              key={index}
-              color="inherit"
-              href="#"
-              onClick={e => {
-                e.preventDefault();
-                handleBreadcrumbClick(item.path!);
-              }}
+              key={item.path}
+              component="button"
+              variant="body2"
+              onClick={() => handleBreadcrumbClick(item)}
               sx={{
-                display: 'flex',
-                alignItems: 'center',
                 textDecoration: 'none',
+                color: 'primary.main',
                 '&:hover': {
                   textDecoration: 'underline',
                 },
               }}
             >
-              {index === 0 && <HomeIcon sx={{ mr: 0.5, fontSize: 16 }} />}
               {item.label}
             </Link>
           );
         })}
       </Breadcrumbs>
+
+      {/* 現在のパス表示（デバッグ用、本番では非表示） */}
+      {process.env.NODE_ENV === 'development' && (
+        <Chip
+          label={currentPath}
+          size="small"
+          variant="outlined"
+          sx={{ ml: 2, fontSize: '0.75rem' }}
+        />
+      )}
     </Box>
   );
 };

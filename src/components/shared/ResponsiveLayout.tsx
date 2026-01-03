@@ -105,7 +105,7 @@ const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
         >
           {/* パンくずナビゲーション */}
           {showBreadcrumbs && (
-            <BreadcrumbNavigation customItems={customBreadcrumbs} />
+            <BreadcrumbNavigation customBreadcrumbs={customBreadcrumbs} />
           )}
 
           {/* ページコンテンツ */}

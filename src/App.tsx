@@ -4,11 +4,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
+import { BrowserRouter } from 'react-router-dom';
 import AppRouter from './components/common/AppRouter.js';
 import {
   MessageProvider,
   useNotification,
 } from './components/shared/MessageContext.js';
+import { NavigationProvider } from './contexts/NavigationContext.js';
 import { ServiceFactory } from './services/common/serviceFactory.js';
 import { UserSession } from './types/auth.js';
 
@@ -85,12 +87,16 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <AppRouter
-      session={currentSession}
-      onLoginSuccess={handleLoginSuccess}
-      onLogout={handleLogout}
-      onUserSwitch={handleUserSwitch}
-    />
+    <BrowserRouter>
+      <NavigationProvider>
+        <AppRouter
+          session={currentSession}
+          onLoginSuccess={handleLoginSuccess}
+          onLogout={handleLogout}
+          onUserSwitch={handleUserSwitch}
+        />
+      </NavigationProvider>
+    </BrowserRouter>
   );
 };
 

@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../auth/ProtectedRoute.js';
 import AppLayout from '../account/AppLayout.js';
 import LoginScreen from '../auth/LoginScreen.js';
@@ -41,111 +41,109 @@ const AppRouter: React.FC<AppRouterProps> = ({
   onUserSwitch,
 }) => {
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* パブリックルート */}
-        <Route
-          path={PATHS.LOGIN}
-          element={
-            session ? (
-              <Navigate to={PATHS.DASHBOARD} replace />
-            ) : (
-              <LoginScreen onLoginSuccess={onLoginSuccess} />
-            )
-          }
-        />
+    <Routes>
+      {/* パブリックルート */}
+      <Route
+        path={PATHS.LOGIN}
+        element={
+          session ? (
+            <Navigate to={PATHS.DASHBOARD} replace />
+          ) : (
+            <LoginScreen onLoginSuccess={onLoginSuccess} />
+          )
+        }
+      />
 
-        {/* エラーページ */}
-        <Route path={PATHS.UNAUTHORIZED} element={<UnauthorizedError />} />
-        <Route path={PATHS.NOT_FOUND} element={<NotFoundError />} />
-        <Route path={PATHS.SERVER_ERROR} element={<ServerError />} />
+      {/* エラーページ */}
+      <Route path={PATHS.UNAUTHORIZED} element={<UnauthorizedError />} />
+      <Route path={PATHS.NOT_FOUND} element={<NotFoundError />} />
+      <Route path={PATHS.SERVER_ERROR} element={<ServerError />} />
 
-        {/* 保護されたルート */}
-        <Route
-          path="/"
-          element={
-            <ProtectedRoute>
-              <AppLayout
-                session={session!}
-                onLogout={onLogout}
-                onUserSwitch={onUserSwitch}
-              />
-            </ProtectedRoute>
-          }
-        >
-          {/* ダッシュボード */}
-          <Route index element={<Dashboard session={session!} />} />
-
-          {/* 顧客管理 */}
-          <Route path="customers">
-            <Route index element={<Navigate to="/customers/list" replace />} />
-            <Route path="list" element={<CustomerManagement />} />
-            <Route path="create" element={<CustomerCreate />} />
-            <Route path=":customerId" element={<CustomerDetail />} />
-            <Route path=":customerId/edit" element={<CustomerEdit />} />
-          </Route>
-
-          {/* 口座管理 */}
-          <Route path="accounts">
-            <Route index element={<Navigate to="/accounts/list" replace />} />
-            <Route path="list" element={<AccountList />} />
-            <Route path="create" element={<AccountCreate />} />
-            <Route path=":accountId" element={<AccountDetail />} />
-            <Route path=":accountId/edit" element={<AccountEdit />} />
-            {/* 他の口座管理ルートは後で実装 */}
-          </Route>
-
-          {/* 取引管理 */}
-          <Route path={PATHS.TRANSACTIONS.slice(1)}>
-            <Route index element={<div>取引管理（実装予定）</div>} />
-            <Route
-              path="input"
-              element={<TransactionInput session={session!} />}
+      {/* 保護されたルート */}
+      <Route
+        path="/"
+        element={
+          <ProtectedRoute>
+            <AppLayout
+              session={session!}
+              onLogout={onLogout}
+              onUserSwitch={onUserSwitch}
             />
-            <Route
-              path="confirmation"
-              element={<TransactionConfirmation session={session!} />}
-            />
-            <Route
-              path="verification"
-              element={<TransactionVerification session={session!} />}
-            />
-            <Route
-              path="final-confirmation"
-              element={
-                <ProtectedRoute adminOnly>
-                  <TransactionConfirmationScreen session={session!} />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="history"
-              element={<TransactionHistory session={session!} />}
-            />
-          </Route>
+          </ProtectedRoute>
+        }
+      >
+        {/* ダッシュボード */}
+        <Route index element={<Dashboard session={session!} />} />
 
-          {/* ワークフロー管理（実装予定） */}
-          <Route path={PATHS.WORKFLOW.slice(1)}>
-            <Route index element={<div>ワークフロー管理（実装予定）</div>} />
-          </Route>
-
-          {/* 設定管理（実装予定） */}
-          <Route path={PATHS.SETTINGS.slice(1)}>
-            <Route
-              index
-              element={
-                <ProtectedRoute adminOnly>
-                  <div>設定管理（実装予定）</div>
-                </ProtectedRoute>
-              }
-            />
-          </Route>
+        {/* 顧客管理 */}
+        <Route path="customers">
+          <Route index element={<Navigate to="/customers/list" replace />} />
+          <Route path="list" element={<CustomerManagement />} />
+          <Route path="create" element={<CustomerCreate />} />
+          <Route path=":customerId" element={<CustomerDetail />} />
+          <Route path=":customerId/edit" element={<CustomerEdit />} />
         </Route>
 
-        {/* 404 - 存在しないパス */}
-        <Route path="*" element={<NotFoundError />} />
-      </Routes>
-    </BrowserRouter>
+        {/* 口座管理 */}
+        <Route path="accounts">
+          <Route index element={<Navigate to="/accounts/list" replace />} />
+          <Route path="list" element={<AccountList />} />
+          <Route path="create" element={<AccountCreate />} />
+          <Route path=":accountId" element={<AccountDetail />} />
+          <Route path=":accountId/edit" element={<AccountEdit />} />
+          {/* 他の口座管理ルートは後で実装 */}
+        </Route>
+
+        {/* 取引管理 */}
+        <Route path={PATHS.TRANSACTIONS.slice(1)}>
+          <Route index element={<div>取引管理（実装予定）</div>} />
+          <Route
+            path="input"
+            element={<TransactionInput session={session!} />}
+          />
+          <Route
+            path="confirmation"
+            element={<TransactionConfirmation session={session!} />}
+          />
+          <Route
+            path="verification"
+            element={<TransactionVerification session={session!} />}
+          />
+          <Route
+            path="final-confirmation"
+            element={
+              <ProtectedRoute adminOnly>
+                <TransactionConfirmationScreen session={session!} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="history"
+            element={<TransactionHistory session={session!} />}
+          />
+        </Route>
+
+        {/* ワークフロー管理（実装予定） */}
+        <Route path={PATHS.WORKFLOW.slice(1)}>
+          <Route index element={<div>ワークフロー管理（実装予定）</div>} />
+        </Route>
+
+        {/* 設定管理（実装予定） */}
+        <Route path={PATHS.SETTINGS.slice(1)}>
+          <Route
+            index
+            element={
+              <ProtectedRoute adminOnly>
+                <div>設定管理（実装予定）</div>
+              </ProtectedRoute>
+            }
+          />
+        </Route>
+      </Route>
+
+      {/* 404 - 存在しないパス */}
+      <Route path="*" element={<NotFoundError />} />
+    </Routes>
   );
 };
 

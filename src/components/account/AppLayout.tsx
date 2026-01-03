@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import UserSwitchModal from '../auth/UserSwitchModal.js';
 import ResponsiveLayout from '../shared/ResponsiveLayout.js';
+import BreadcrumbNavigation from '../shared/BreadcrumbNavigation.js';
 import { UserSession, UserRole } from '../../types/auth.js';
 import { ServiceFactory } from '../../services/common/serviceFactory.js';
 import { PATHS } from '../../constants/paths.js';
@@ -216,12 +217,15 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       <Box sx={{ mt: 8 }}>
         {' '}
         {/* AppBarの高さ分のマージン */}
+        {/* パンくずナビゲーション */}
+        <BreadcrumbNavigation />
         <ResponsiveLayout
           session={session}
           mobileNavOpen={mobileNavOpen}
           onMobileNavClose={() => setMobileNavOpen(false)}
           desktopNavOpen={desktopNavOpen}
           onDesktopNavToggle={handleDesktopNavToggle}
+          showBreadcrumbs={false}
         >
           <Outlet />
         </ResponsiveLayout>

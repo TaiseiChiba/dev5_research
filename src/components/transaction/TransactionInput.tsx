@@ -41,6 +41,8 @@ import {
   debounce,
   ValidationErrors,
 } from '../../utils/transactionValidation.js';
+import { useTransactionTransition } from '../../hooks/useScreenTransition.js';
+import { useNavigation } from '../../contexts/NavigationContext.js';
 
 interface TransactionInputProps {
   session?: { userId: string; userRole: string };
@@ -77,6 +79,9 @@ interface TransactionConfirmationData {
 const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { navigateWithData, setBreadcrumbs } = useNavigation();
+  const { transitionData, navigateToConfirmation } = useTransactionTransition();
+
   const transactionService =
     ServiceFactory.getInstance().getTransactionService();
   const accountService = ServiceFactory.getInstance().getAccountService();
@@ -84,7 +89,21 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
 
   // フォームデータの初期化（確認画面からの戻りデータを考慮）
   const [formData, setFormData] = useState<FormData>(() => {
-    // location.stateから戻りデータを取得
+    // 遷移データから戻りデータを取得
+    if (transitionData) {
+      return {
+        type: transitionData.type as TransactionType,
+        sourceAccountId: transitionData.sourceAccountId || '',
+        destinationAccountId: transitionData.destinationAccountId || '',
+        amount: transitionData.amount.toString(),
+        description: transitionData.description,
+        transactionDate: new Date(transitionData.transactionDate || new Date())
+          .toISOString()
+          .split('T')[0],
+      };
+    }
+
+    // location.stateからの戻りデータ（従来の方法）
     const stateData = location.state as {
       transactionData?: TransactionConfirmationData;
     };
@@ -214,6 +233,14 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
     loadAccounts();
   }, [accountService, customerService]);
 
+  // パンくずナビゲーション設定
+  useEffect(() => {
+    setBreadcrumbs([
+      { label: 'ダッシュボード', path: PATHS.DASHBOARD },
+      { label: '取引入力', isActive: true },
+    ]);
+  }, [setBreadcrumbs]);
+
   // フォーム入力ハンドラー
   const handleInputChange = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -288,9 +315,7 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
       console.log('Navigating to confirmation with data:', transactionData);
 
       // 確認画面に遷移（データを引き継ぎ）
-      navigate(PATHS.TRANSACTION_CONFIRMATION, {
-        state: { transactionData },
-      });
+      navigateToConfirmation(PATHS.TRANSACTION_CONFIRMATION, transactionData);
     } catch (error) {
       console.error('データ準備エラー:', error);
       setErrors({
@@ -566,7 +591,7 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
                 >
                   <Button
                     variant="outlined"
-                    onClick={() => navigate(PATHS.TRANSACTIONS)}
+                    onClick={() => navigateWithData(PATHS.TRANSACTIONS)}
                     disabled={submitting}
                   >
                     キャンセル
