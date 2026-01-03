@@ -2,7 +2,8 @@
  * 取引確定画面コンポーネント
  *
  * 確定準備完了取引の一覧表示、取引確定ボタンと処理結果表示、残高更新の表示を提供します。
- * 要件: 6.1, 6.2, 6.5
+ * また、当日確定済み取引の取消機能も提供します。
+ * 要件: 6.1, 6.2, 6.3, 6.5, 9.1
  */
 
 import React, { useState, useEffect } from 'react';
@@ -40,6 +41,7 @@ import {
   TrendingDown as TrendingDownIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  Cancel as CancelIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -81,8 +83,13 @@ const TransactionConfirmationScreen: React.FC<
   const [accounts, setAccounts] = useState<AccountWithCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
   const [error, setError] = useState<string>('');
   const [confirmationDialog, setConfirmationDialog] = useState<{
+    open: boolean;
+    transaction: Transaction | null;
+  }>({ open: false, transaction: null });
+  const [cancellationDialog, setCancellationDialog] = useState<{
     open: boolean;
     transaction: Transaction | null;
   }>({ open: false, transaction: null });
@@ -99,11 +106,20 @@ const TransactionConfirmationScreen: React.FC<
   const loadData = async () => {
     try {
       setLoading(true);
-      setError('');
+      setError(''); // エラー状態をクリア
 
-      // 確定準備完了取引と口座・顧客データを並行取得
-      const [readyTransactions, accountList, customerList] = await Promise.all([
+      // 確定準備完了取引と確定済み取引（当日のみ）、口座・顧客データを並行取得
+      const [
+        readyTransactions,
+        confirmedTransactions,
+        accountList,
+        customerList,
+      ] = await Promise.all([
         transactionService.getTransactionsReadyForConfirmation(),
+        transactionService.getTransactionHistory({
+          dateFrom: new Date(new Date().setHours(0, 0, 0, 0)),
+          dateTo: new Date(new Date().setHours(23, 59, 59, 999)),
+        }),
         accountService.listAccounts(),
         customerService.listCustomers({ page: 1, limit: 1000 }),
       ]);
@@ -125,11 +141,19 @@ const TransactionConfirmationScreen: React.FC<
         }
       );
 
-      setTransactions(readyTransactions);
+      // 確定準備完了取引と当日の確定済み取引を結合
+      const allTransactions = [...readyTransactions, ...confirmedTransactions];
+
+      // データを正常に設定（件数が0件でもエラーではない）
+      setTransactions(allTransactions);
       setAccounts(accountsWithCustomer);
+
+      // 正常に完了した場合はエラー状態をクリア
+      setError('');
     } catch (error) {
       console.error('データ読み込みエラー:', error);
-      setError('データの読み込みに失敗しました。');
+      // 実際にエラーが発生した場合のみエラーメッセージを設定
+      setError('データの読み込みに失敗しました。再度お試しください。');
     } finally {
       setLoading(false);
     }
@@ -185,6 +209,25 @@ const TransactionConfirmationScreen: React.FC<
   // 確定確認ダイアログを閉じる
   const handleConfirmDialogClose = () => {
     setConfirmationDialog({ open: false, transaction: null });
+  };
+
+  // 取消確認ダイアログを開く
+  const handleCancelClick = (transaction: Transaction) => {
+    setCancellationDialog({ open: true, transaction });
+  };
+
+  // 取消確認ダイアログを閉じる
+  const handleCancelDialogClose = () => {
+    setCancellationDialog({ open: false, transaction: null });
+  };
+
+  // 当日取引かどうかを判定
+  const isSameDayTransaction = (transaction: Transaction): boolean => {
+    const today = new Date();
+    const transactionDate = new Date(
+      transaction.confirmedAt || transaction.createdAt
+    );
+    return transactionDate.toDateString() === today.toDateString();
   };
 
   // 取引確定処理
@@ -256,8 +299,16 @@ const TransactionConfirmationScreen: React.FC<
         setConfirmationResults(prev => [...prev, confirmationResult]);
         setShowResults(true);
 
-        // データを再読み込み
-        await loadData();
+        // データを再読み込み（エラーが発生してもメイン処理の成功は維持）
+        try {
+          await loadData();
+        } catch (reloadError) {
+          console.warn(
+            'データ再読み込みエラー（確定処理は正常完了）:',
+            reloadError
+          );
+          // データ再読み込みエラーは警告レベルとし、確定処理の成功メッセージは維持
+        }
       } else {
         setError(result.message || '取引確定に失敗しました。');
       }
@@ -267,6 +318,60 @@ const TransactionConfirmationScreen: React.FC<
     } finally {
       setConfirming(null);
       handleConfirmDialogClose();
+    }
+  };
+
+  // 取引取消処理
+  const handleCancelTransaction = async () => {
+    const { transaction } = cancellationDialog;
+    if (!transaction || !session?.userId) {
+      setError('セッション情報が不正です。');
+      return;
+    }
+
+    try {
+      setCancelling(transaction.transactionId);
+      setError('');
+
+      // 取引取消実行
+      const result = await transactionService.cancelTransaction(
+        transaction.transactionId
+      );
+
+      if (result.success) {
+        setConfirmationResults(prev => [
+          ...prev,
+          {
+            transaction,
+            result: {
+              transactionId: transaction.transactionId,
+              success: true,
+              message: result.message || '取引が正常に取消されました。',
+            },
+            balanceChanges: [], // 取消時は残高変更情報は表示しない
+          },
+        ]);
+        setShowResults(true);
+
+        // データを再読み込み（エラーが発生してもメイン処理の成功は維持）
+        try {
+          await loadData();
+        } catch (reloadError) {
+          console.warn(
+            'データ再読み込みエラー（取消処理は正常完了）:',
+            reloadError
+          );
+          // データ再読み込みエラーは警告レベルとし、取消処理の成功メッセージは維持
+        }
+      } else {
+        setError(result.message || '取引取消に失敗しました。');
+      }
+    } catch (error) {
+      console.error('取引取消エラー:', error);
+      setError('取引取消中にエラーが発生しました。');
+    } finally {
+      setCancelling(null);
+      handleCancelDialogClose();
     }
   };
 
@@ -433,7 +538,7 @@ const TransactionConfirmationScreen: React.FC<
         <CardContent>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
             <AccountBalanceIcon color="primary" />
-            <Typography variant="h6">確定準備完了取引</Typography>
+            <Typography variant="h6">取引確定・取消管理</Typography>
             <Chip
               label={`${transactions.length}件`}
               color="primary"
@@ -441,14 +546,19 @@ const TransactionConfirmationScreen: React.FC<
             />
           </Box>
 
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            確定準備完了の取引は確定処理を、当日確定済みの取引は取消処理を行えます。
+          </Typography>
+
           {transactions.length === 0 ? (
-            <Alert severity="info">確定準備完了の取引はありません。</Alert>
+            <Alert severity="info">処理可能な取引はありません。</Alert>
           ) : (
             <TableContainer component={Paper} variant="outlined">
               <Table>
                 <TableHead>
                   <TableRow>
                     <TableCell>取引ID</TableCell>
+                    <TableCell>状態</TableCell>
                     <TableCell>取引タイプ</TableCell>
                     <TableCell>振込元口座</TableCell>
                     <TableCell>振込先口座</TableCell>
@@ -467,6 +577,9 @@ const TransactionConfirmationScreen: React.FC<
                     const destinationAccount = transaction.destinationAccountId
                       ? getAccountInfo(transaction.destinationAccountId)
                       : undefined;
+                    const isConfirmed = transaction.status === 'confirmed';
+                    const canCancel =
+                      isConfirmed && isSameDayTransaction(transaction);
 
                     return (
                       <TableRow key={transaction.transactionId}>
@@ -474,6 +587,13 @@ const TransactionConfirmationScreen: React.FC<
                           <Typography variant="body2" fontFamily="monospace">
                             {transaction.transactionId}
                           </Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label={isConfirmed ? '確定済み' : '確定準備完了'}
+                            color={isConfirmed ? 'success' : 'warning'}
+                            size="small"
+                          />
                         </TableCell>
                         <TableCell>
                           <Chip
@@ -527,7 +647,9 @@ const TransactionConfirmationScreen: React.FC<
                           </Typography>
                         </TableCell>
                         <TableCell align="center">
-                          <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Box
+                            sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}
+                          >
                             <Tooltip title="詳細表示">
                               <IconButton
                                 size="small"
@@ -540,26 +662,58 @@ const TransactionConfirmationScreen: React.FC<
                                 <VisibilityIcon />
                               </IconButton>
                             </Tooltip>
-                            <Button
-                              variant="contained"
-                              color="success"
-                              size="small"
-                              startIcon={
-                                confirming === transaction.transactionId ? (
-                                  <CircularProgress size={16} color="inherit" />
-                                ) : (
-                                  <CheckCircleIcon />
-                                )
-                              }
-                              onClick={() => handleConfirmClick(transaction)}
-                              disabled={
-                                confirming === transaction.transactionId
-                              }
-                            >
-                              {confirming === transaction.transactionId
-                                ? '確定中...'
-                                : '確定'}
-                            </Button>
+                            {!isConfirmed && (
+                              <Button
+                                variant="contained"
+                                color="success"
+                                size="small"
+                                startIcon={
+                                  confirming === transaction.transactionId ? (
+                                    <CircularProgress
+                                      size={16}
+                                      color="inherit"
+                                    />
+                                  ) : (
+                                    <CheckCircleIcon />
+                                  )
+                                }
+                                onClick={() => handleConfirmClick(transaction)}
+                                disabled={
+                                  confirming === transaction.transactionId ||
+                                  cancelling === transaction.transactionId
+                                }
+                              >
+                                {confirming === transaction.transactionId
+                                  ? '確定中...'
+                                  : '確定'}
+                              </Button>
+                            )}
+                            {canCancel && (
+                              <Button
+                                variant="outlined"
+                                color="error"
+                                size="small"
+                                startIcon={
+                                  cancelling === transaction.transactionId ? (
+                                    <CircularProgress
+                                      size={16}
+                                      color="inherit"
+                                    />
+                                  ) : (
+                                    <CancelIcon />
+                                  )
+                                }
+                                onClick={() => handleCancelClick(transaction)}
+                                disabled={
+                                  confirming === transaction.transactionId ||
+                                  cancelling === transaction.transactionId
+                                }
+                              >
+                                {cancelling === transaction.transactionId
+                                  ? '取消中...'
+                                  : '取消'}
+                              </Button>
+                            )}
                           </Box>
                         </TableCell>
                       </TableRow>
@@ -701,6 +855,149 @@ const TransactionConfirmationScreen: React.FC<
             disabled={confirming !== null}
           >
             確定実行
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* 取消確認ダイアログ */}
+      <Dialog
+        open={cancellationDialog.open}
+        onClose={handleCancelDialogClose}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <CancelIcon color="error" />
+            <Typography variant="h6">取引取消の確認</Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {cancellationDialog.transaction && (
+            <>
+              <DialogContentText sx={{ mb: 3 }}>
+                以下の取引を取消しますか？取消後は口座残高が元に戻り、取引は取消済み状態になります。
+                <br />
+                <strong>注意：この操作は元に戻すことができません。</strong>
+              </DialogContentText>
+
+              <Alert severity="warning" sx={{ mb: 3 }}>
+                取引の取消は当日のみ可能です。取消後は口座残高が自動的に調整されます。
+              </Alert>
+
+              <Card variant="outlined">
+                <CardContent>
+                  <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        取引ID
+                      </Typography>
+                      <Typography variant="body1" fontFamily="monospace">
+                        {cancellationDialog.transaction.transactionId}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        取引タイプ
+                      </Typography>
+                      <Chip
+                        label={getTransactionTypeLabel(
+                          cancellationDialog.transaction.type
+                        )}
+                        color={getTransactionTypeColor(
+                          cancellationDialog.transaction.type
+                        )}
+                        size="small"
+                      />
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        金額
+                      </Typography>
+                      <Typography variant="h6" color="error">
+                        ¥
+                        {cancellationDialog.transaction.amount.toLocaleString()}
+                      </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Typography variant="body2" color="text.secondary">
+                        確定日時
+                      </Typography>
+                      <Typography variant="body1">
+                        {cancellationDialog.transaction.confirmedAt
+                          ? new Date(
+                              cancellationDialog.transaction.confirmedAt
+                            ).toLocaleString('ja-JP')
+                          : '未確定'}
+                      </Typography>
+                    </Grid>
+                    {cancellationDialog.transaction.sourceAccountId && (
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary">
+                          振込元口座
+                        </Typography>
+                        <Typography variant="body1">
+                          {getAccountInfo(
+                            cancellationDialog.transaction.sourceAccountId
+                          )
+                            ? formatAccountDisplay(
+                                getAccountInfo(
+                                  cancellationDialog.transaction.sourceAccountId
+                                )!
+                              )
+                            : '口座情報が見つかりません'}
+                        </Typography>
+                      </Grid>
+                    )}
+                    {cancellationDialog.transaction.destinationAccountId && (
+                      <Grid item xs={12}>
+                        <Typography variant="body2" color="text.secondary">
+                          振込先口座
+                        </Typography>
+                        <Typography variant="body1">
+                          {getAccountInfo(
+                            cancellationDialog.transaction.destinationAccountId
+                          )
+                            ? formatAccountDisplay(
+                                getAccountInfo(
+                                  cancellationDialog.transaction
+                                    .destinationAccountId
+                                )!
+                              )
+                            : '口座情報が見つかりません'}
+                        </Typography>
+                      </Grid>
+                    )}
+                    <Grid item xs={12}>
+                      <Typography variant="body2" color="text.secondary">
+                        取引内容
+                      </Typography>
+                      <Typography variant="body1">
+                        {cancellationDialog.transaction.description}
+                      </Typography>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 1 }}>
+          <Button
+            onClick={handleCancelDialogClose}
+            variant="outlined"
+            disabled={cancelling !== null}
+          >
+            戻る
+          </Button>
+          <Button
+            onClick={handleCancelTransaction}
+            variant="contained"
+            color="error"
+            startIcon={<CancelIcon />}
+            disabled={cancelling !== null}
+          >
+            取消実行
           </Button>
         </DialogActions>
       </Dialog>
