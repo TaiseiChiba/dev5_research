@@ -17,6 +17,8 @@ import {
   Paper,
   Collapse,
   ListItemButton,
+  Button,
+  Stack,
 } from '@mui/material';
 import {
   AccountBalanceOutlined,
@@ -27,9 +29,11 @@ import {
   ExpandLess,
   ExpandMore,
   ChevronRight,
+  NotificationsOutlined,
 } from '@mui/icons-material';
 import { UserSession, UserRole } from '../../types/auth.js';
 import { PATHS } from '../../constants/paths.js';
+import { useNotification } from '../../components/shared/MessageContext.js';
 
 interface DashboardProps {
   session: UserSession;
@@ -37,6 +41,7 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ session }) => {
   const navigate = useNavigate();
+  const notification = useNotification();
   const [expandedItems, setExpandedItems] = useState<number[]>([]);
 
   const handleExpandClick = (index: number) => {
@@ -127,7 +132,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
       </Card>
 
       {/* 利用可能な機能 */}
-      <Paper elevation={2} sx={{ p: 3 }}>
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" gutterBottom color="primary">
           利用可能な機能
         </Typography>
@@ -190,6 +195,60 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
             </React.Fragment>
           ))}
         </List>
+      </Paper>
+
+      {/* メッセージシステムのデモンストレーション */}
+      <Paper elevation={2} sx={{ p: 3 }}>
+        <Typography variant="h5" gutterBottom color="primary">
+          <NotificationsOutlined sx={{ mr: 1, verticalAlign: 'middle' }} />
+          統一メッセージシステム
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          要件 8.5, 9.2, 9.3, 9.4
+          に対応した統一されたメッセージ表示システムのデモンストレーション
+        </Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+          <Button
+            variant="outlined"
+            color="success"
+            size="small"
+            onClick={() => notification.success('操作が正常に完了しました。')}
+          >
+            成功メッセージ
+          </Button>
+          <Button
+            variant="outlined"
+            color="error"
+            size="small"
+            onClick={() =>
+              notification.error(
+                'エラーが発生しました。システム管理者にお問い合わせください。'
+              )
+            }
+          >
+            エラーメッセージ
+          </Button>
+          <Button
+            variant="outlined"
+            color="warning"
+            size="small"
+            onClick={() =>
+              notification.warning(
+                '残高が不足しています。入金を行ってください。'
+              )
+            }
+          >
+            警告メッセージ
+          </Button>
+          <Button
+            variant="outlined"
+            color="info"
+            size="small"
+            onClick={() => notification.info('新しい通知があります。')}
+          >
+            情報メッセージ
+          </Button>
+        </Stack>
       </Paper>
     </Box>
   );

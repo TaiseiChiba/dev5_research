@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
 import AppRouter from './components/common/AppRouter.js';
+import { MessageProvider } from './components/shared/MessageContext.js';
 import { ServiceFactory } from './services/common/serviceFactory.js';
 import { UserSession } from './types/auth.js';
 
@@ -66,12 +67,14 @@ const App: React.FC = () => {
   }
 
   return (
-    <AppRouter
-      session={currentSession}
-      onLoginSuccess={handleLoginSuccess}
-      onLogout={handleLogout}
-      onUserSwitch={handleUserSwitch}
-    />
+    <MessageProvider>
+      <AppRouter
+        session={currentSession}
+        onLoginSuccess={handleLoginSuccess}
+        onLogout={handleLogout}
+        onUserSwitch={handleUserSwitch}
+      />
+    </MessageProvider>
   );
 };
 
