@@ -14,30 +14,20 @@ import {
   Paper,
   Chip,
   Alert,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  Grid,
   CircularProgress,
   IconButton,
 } from '@mui/material';
 import {
   Visibility as VisibilityIcon,
   Add as AddIcon,
-  CheckCircle as CheckCircleIcon,
   Cancel as CancelIcon,
-  Pause as PauseIcon,
-  Close as CloseIcon,
-  Info as InfoIcon,
   AccountBalance as AccountBalanceIcon,
-  Description as DescriptionIcon,
-  Comment as CommentIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { PATHS } from '../../constants/paths';
 import { ServiceFactory } from '../../services/common/serviceFactory';
+import { TransactionStatusManager } from '../workflow/TransactionStatusManager';
 import type {
   Transaction,
   TransactionType,
@@ -49,322 +39,6 @@ import type { Account } from '../../types/account';
 interface TransactionVerificationProps {
   session: UserSession;
 }
-
-interface TransactionDetailModalProps {
-  transaction: Transaction;
-  sourceAccount?: Account;
-  destinationAccount?: Account;
-  onClose: () => void;
-  onVerify: (
-    transactionId: string,
-    verification: TransactionVerificationData
-  ) => void;
-  currentUserId: string;
-}
-
-const TransactionDetailModal: React.FC<TransactionDetailModalProps> = ({
-  transaction,
-  sourceAccount,
-  destinationAccount,
-  onClose,
-  onVerify,
-  currentUserId,
-}) => {
-  const [comments, setComments] = useState('');
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  const handleVerification = async (action: 'approve' | 'hold' | 'return') => {
-    if (isProcessing) return;
-
-    setIsProcessing(true);
-    try {
-      const verification: TransactionVerificationData = {
-        action,
-        comments: comments.trim() || undefined,
-        verifiedBy: currentUserId,
-      };
-
-      await onVerify(transaction.transactionId, verification);
-      onClose();
-    } catch (error) {
-      console.error('Verification error:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const getTransactionTypeLabel = (type: TransactionType): string => {
-    switch (type) {
-      case 'transfer':
-        return '振込';
-      case 'deposit':
-        return '入金';
-      case 'withdrawal':
-        return '出金';
-      default:
-        return type;
-    }
-  };
-
-  const getTransactionTypeColor = (
-    type: TransactionType
-  ): 'primary' | 'success' | 'warning' => {
-    switch (type) {
-      case 'transfer':
-        return 'primary';
-      case 'deposit':
-        return 'success';
-      case 'withdrawal':
-        return 'warning';
-      default:
-        return 'primary';
-    }
-  };
-
-  const formatAccountDisplay = (account: Account): string => {
-    return `${account.accountNumber} (残高: ¥${account.balance.toLocaleString()})`;
-  };
-
-  return (
-    <Dialog
-      open={true}
-      onClose={onClose}
-      maxWidth="md"
-      fullWidth
-      PaperProps={{
-        sx: { minHeight: '600px' },
-      }}
-    >
-      <DialogTitle>
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <InfoIcon color="primary" />
-            <Box>
-              <Typography variant="h6">取引詳細確認</Typography>
-              <Typography variant="body2" color="text.secondary">
-                以下の取引内容を確認し、適切な検証アクションを選択してください
-              </Typography>
-            </Box>
-          </Box>
-          <IconButton onClick={onClose} size="small">
-            <CloseIcon />
-          </IconButton>
-        </Box>
-      </DialogTitle>
-
-      <DialogContent dividers>
-        {/* 取引概要カード */}
-        <Card sx={{ mb: 3, bgcolor: 'primary.50' }}>
-          <CardContent>
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                mb: 2,
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <AccountBalanceIcon color="primary" />
-                <Box>
-                  <Typography variant="h6">
-                    {getTransactionTypeLabel(transaction.type)}取引
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    ID: {transaction.transactionId}
-                  </Typography>
-                </Box>
-              </Box>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="h4" color="primary" fontWeight="bold">
-                  ¥{transaction.amount.toLocaleString()}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {new Date(transaction.createdAt).toLocaleString('ja-JP')}
-                </Typography>
-              </Box>
-            </Box>
-          </CardContent>
-        </Card>
-
-        <Grid container spacing={3} sx={{ mb: 3 }}>
-          {/* 基本情報 */}
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <InfoIcon sx={{ mr: 1 }} />
-                  <Typography variant="h6">基本情報</Typography>
-                </Box>
-                <TableContainer>
-                  <Table size="small">
-                    <TableBody>
-                      <TableRow>
-                        <TableCell
-                          component="th"
-                          sx={{ fontWeight: 'bold', border: 0 }}
-                        >
-                          取引種別
-                        </TableCell>
-                        <TableCell sx={{ border: 0 }}>
-                          <Chip
-                            label={getTransactionTypeLabel(transaction.type)}
-                            color={getTransactionTypeColor(transaction.type)}
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell
-                          component="th"
-                          sx={{ fontWeight: 'bold', border: 0 }}
-                        >
-                          作成者
-                        </TableCell>
-                        <TableCell sx={{ border: 0 }}>
-                          {transaction.createdBy}
-                        </TableCell>
-                      </TableRow>
-                      <TableRow>
-                        <TableCell
-                          component="th"
-                          sx={{ fontWeight: 'bold', border: 0 }}
-                        >
-                          作成日時
-                        </TableCell>
-                        <TableCell sx={{ border: 0 }}>
-                          {new Date(transaction.createdAt).toLocaleString(
-                            'ja-JP'
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              </CardContent>
-            </Card>
-          </Grid>
-
-          {/* 口座情報 */}
-          <Grid item xs={12} md={6}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <AccountBalanceIcon sx={{ mr: 1 }} />
-                  <Typography variant="h6">口座情報</Typography>
-                </Box>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                  {sourceAccount && (
-                    <Alert severity="warning" variant="outlined">
-                      <Typography variant="body2" fontWeight="bold">
-                        振込元口座
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontFamily: 'monospace' }}
-                      >
-                        {formatAccountDisplay(sourceAccount)}
-                      </Typography>
-                    </Alert>
-                  )}
-                  {destinationAccount && (
-                    <Alert severity="success" variant="outlined">
-                      <Typography variant="body2" fontWeight="bold">
-                        振込先口座
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        sx={{ fontFamily: 'monospace' }}
-                      >
-                        {formatAccountDisplay(destinationAccount)}
-                      </Typography>
-                    </Alert>
-                  )}
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
-
-        {/* 取引内容 */}
-        <Card sx={{ mb: 3 }}>
-          <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <DescriptionIcon sx={{ mr: 1 }} />
-              <Typography variant="h6">取引内容</Typography>
-            </Box>
-            <Paper variant="outlined" sx={{ p: 2, bgcolor: 'grey.50' }}>
-              <Typography sx={{ whiteSpace: 'pre-wrap' }}>
-                {transaction.description}
-              </Typography>
-            </Paper>
-          </CardContent>
-        </Card>
-
-        {/* コメント入力 */}
-        <Card>
-          <CardContent>
-            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-              <CommentIcon sx={{ mr: 1 }} />
-              <Typography variant="h6">検証コメント</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ ml: 1 }}>
-                （任意）
-              </Typography>
-            </Box>
-            <TextField
-              fullWidth
-              multiline
-              rows={4}
-              placeholder="検証時のコメントや気づいた点があれば入力してください..."
-              value={comments}
-              onChange={e => setComments(e.target.value)}
-              variant="outlined"
-            />
-          </CardContent>
-        </Card>
-      </DialogContent>
-
-      <DialogActions sx={{ p: 3, gap: 1 }}>
-        <Button onClick={onClose} disabled={isProcessing} variant="outlined">
-          キャンセル
-        </Button>
-        <Button
-          onClick={() => handleVerification('return')}
-          disabled={isProcessing}
-          variant="contained"
-          color="error"
-          startIcon={<CancelIcon />}
-        >
-          {isProcessing ? '処理中...' : '差し戻し'}
-        </Button>
-        <Button
-          onClick={() => handleVerification('hold')}
-          disabled={isProcessing}
-          variant="contained"
-          color="warning"
-          startIcon={<PauseIcon />}
-        >
-          {isProcessing ? '処理中...' : '保留'}
-        </Button>
-        <Button
-          onClick={() => handleVerification('approve')}
-          disabled={isProcessing}
-          variant="contained"
-          color="success"
-          startIcon={<CheckCircleIcon />}
-        >
-          {isProcessing ? '処理中...' : '承認'}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
 
 export const TransactionVerification: React.FC<
   TransactionVerificationProps
@@ -409,35 +83,12 @@ export const TransactionVerification: React.FC<
     }
   };
 
-  const handleVerifyTransaction = async (
-    transactionId: string,
-    verification: TransactionVerificationData
-  ) => {
-    try {
-      const transactionService =
-        ServiceFactory.getInstance().getTransactionService();
-      const result = await transactionService.verifyTransaction(
-        transactionId,
-        verification
-      );
+  const handleStatusChanged = async () => {
+    setSuccessMessage('取引状態が正常に変更されました');
+    await loadData(); // データを再読み込み
 
-      if (result.success) {
-        setSuccessMessage(result.message || '取引検証が完了しました');
-        await loadData(); // データを再読み込み
-
-        // 成功メッセージを3秒後に消去
-        setTimeout(() => setSuccessMessage(null), 3000);
-      } else {
-        setError(result.message || '取引検証に失敗しました');
-      }
-    } catch (err) {
-      setError('取引検証に失敗しました');
-      console.error('取引検証エラー:', err);
-    }
-  };
-
-  const getAccountById = (accountId: string): Account | undefined => {
-    return accounts.find(account => account.accountId === accountId);
+    // 成功メッセージを3秒後に消去
+    setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   const getTransactionTypeLabel = (type: TransactionType): string => {
@@ -678,10 +329,10 @@ export const TransactionVerification: React.FC<
                         <Button
                           variant="outlined"
                           size="small"
-                          startIcon={<VisibilityIcon />}
+                          startIcon={<SettingsIcon />}
                           onClick={() => setSelectedTransaction(transaction)}
                         >
-                          詳細確認
+                          状態管理
                         </Button>
                       ) : (
                         <Button
@@ -702,23 +353,13 @@ export const TransactionVerification: React.FC<
         </Card>
       )}
 
-      {/* 取引詳細モーダル */}
+      {/* 取引状態管理モーダル */}
       {selectedTransaction && (
-        <TransactionDetailModal
+        <TransactionStatusManager
           transaction={selectedTransaction}
-          sourceAccount={
-            selectedTransaction.sourceAccountId
-              ? getAccountById(selectedTransaction.sourceAccountId)
-              : undefined
-          }
-          destinationAccount={
-            selectedTransaction.destinationAccountId
-              ? getAccountById(selectedTransaction.destinationAccountId)
-              : undefined
-          }
+          session={session}
+          onStatusChanged={handleStatusChanged}
           onClose={() => setSelectedTransaction(null)}
-          onVerify={handleVerifyTransaction}
-          currentUserId={session.userId}
         />
       )}
     </Box>

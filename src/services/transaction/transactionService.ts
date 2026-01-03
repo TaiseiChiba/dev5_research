@@ -116,15 +116,19 @@ export class TransactionService {
 
     // 状態更新
     let newStatus: TransactionStatus;
+    let actionMessage: string;
     switch (verification.action) {
       case 'approve':
         newStatus = TransactionStatus.VERIFICATION_COMPLETE;
+        actionMessage = '取引が承認されました。';
         break;
       case 'hold':
         newStatus = TransactionStatus.ON_HOLD;
+        actionMessage = '取引が保留されました。';
         break;
       case 'return':
         newStatus = TransactionStatus.RETURNED_FOR_CORRECTION;
+        actionMessage = '取引が差し戻されました。';
         break;
       default:
         return {
@@ -134,6 +138,20 @@ export class TransactionService {
         };
     }
 
+    // ワークフローサービスを使用して状態変更を処理
+    const workflowService = ServiceFactory.getInstance().getWorkflowService();
+    const statusChangeResult = await workflowService.processStatusChange(
+      transactionId,
+      newStatus,
+      verification.verifiedBy,
+      verification.comments
+    );
+
+    if (!statusChangeResult.success) {
+      return statusChangeResult;
+    }
+
+    // 取引データを更新
     transactions[transactionIndex] = {
       ...transaction,
       status: newStatus,
@@ -145,7 +163,7 @@ export class TransactionService {
 
     return {
       success: true,
-      message: '取引検証が完了しました。',
+      message: actionMessage,
       timestamp: new Date().toISOString(),
     };
   }
@@ -224,6 +242,134 @@ export class TransactionService {
         success: false,
         message: `取引確定中にエラーが発生しました: ${error}`,
       };
+    }
+  }
+
+  /**
+   * 取引状態変更（汎用）
+   */
+  async changeTransactionStatus(
+    transactionId: string,
+    newStatus: TransactionStatus,
+    userId: string,
+    comments?: string
+  ): Promise<BaseApiResponse> {
+    await this.simulateApiDelay();
+
+    const transactions = reviveDatesInArray(
+      getStorageData<Transaction>('mockTransactions')
+    );
+    const transactionIndex = transactions.findIndex(
+      t => t.transactionId === transactionId
+    );
+
+    if (transactionIndex === -1) {
+      return {
+        success: false,
+        message: '取引が見つかりません。',
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    const transaction = transactions[transactionIndex];
+
+    // ワークフローサービスを使用して状態変更を検証・処理
+    const workflowService = ServiceFactory.getInstance().getWorkflowService();
+
+    // 状態遷移の検証
+    const isValidTransition =
+      await workflowService.validateTransactionTransition(
+        transactionId,
+        newStatus,
+        userId
+      );
+
+    if (!isValidTransition) {
+      return {
+        success: false,
+        message: '無効な状態遷移です。',
+        timestamp: new Date().toISOString(),
+      };
+    }
+
+    // 自己検証防止（検証系の状態変更の場合）
+    if (this.isVerificationStatus(newStatus)) {
+      const canVerify = await workflowService.enforceDoubleCheckRule(
+        transactionId,
+        userId
+      );
+
+      if (!canVerify) {
+        return {
+          success: false,
+          message: '自分が作成した取引は検証できません。',
+          timestamp: new Date().toISOString(),
+        };
+      }
+    }
+
+    // ワークフロー履歴を記録
+    const statusChangeResult = await workflowService.processStatusChange(
+      transactionId,
+      newStatus,
+      userId,
+      comments
+    );
+
+    if (!statusChangeResult.success) {
+      return statusChangeResult;
+    }
+
+    // 取引データを更新
+    const updatedTransaction = { ...transaction, status: newStatus };
+
+    // 状態に応じて追加フィールドを更新
+    if (this.isVerificationStatus(newStatus)) {
+      updatedTransaction.verifiedBy = userId;
+      updatedTransaction.verifiedAt = new Date();
+    } else if (newStatus === TransactionStatus.CONFIRMED) {
+      updatedTransaction.confirmedBy = userId;
+      updatedTransaction.confirmedAt = new Date();
+    }
+
+    transactions[transactionIndex] = updatedTransaction;
+    setStorageData('mockTransactions', transactions);
+
+    return {
+      success: true,
+      message: this.getStatusChangeMessage(newStatus),
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * 検証系の状態かどうかを判定
+   */
+  private isVerificationStatus(status: TransactionStatus): boolean {
+    return [
+      TransactionStatus.VERIFICATION_COMPLETE,
+      TransactionStatus.ON_HOLD,
+      TransactionStatus.RETURNED_FOR_CORRECTION,
+    ].includes(status);
+  }
+
+  /**
+   * 状態変更メッセージを取得
+   */
+  private getStatusChangeMessage(status: TransactionStatus): string {
+    switch (status) {
+      case TransactionStatus.VERIFICATION_COMPLETE:
+        return '取引が承認されました。';
+      case TransactionStatus.ON_HOLD:
+        return '取引が保留されました。';
+      case TransactionStatus.RETURNED_FOR_CORRECTION:
+        return '取引が差し戻されました。';
+      case TransactionStatus.CONFIRMED:
+        return '取引が確定されました。';
+      case TransactionStatus.CANCELLED:
+        return '取引が取消されました。';
+      default:
+        return '取引状態が変更されました。';
     }
   }
 

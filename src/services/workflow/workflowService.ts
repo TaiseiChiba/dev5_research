@@ -132,11 +132,11 @@ export class WorkflowService {
       const transactions = reviveDatesInArray(
         getStorageData<Transaction>('mockTransactions')
       );
-      const transactionIndex = transactions.findIndex(
+      const transaction = transactions.find(
         t => t.transactionId === transactionId
       );
 
-      if (transactionIndex === -1) {
+      if (!transaction) {
         return {
           success: false,
           message: '取引が見つかりません。',
@@ -144,7 +144,6 @@ export class WorkflowService {
         };
       }
 
-      const transaction = transactions[transactionIndex];
       const validation = await this.getTransitionValidation(
         transactionId,
         newStatus,
@@ -192,11 +191,35 @@ export class WorkflowService {
       const workflowHistory = reviveDatesInArray(
         getStorageData<WorkflowStep>('workflowHistory') || []
       );
-      return workflowHistory.filter(
-        step => step.transactionId === transactionId
-      );
+      return workflowHistory
+        .filter(step => step.transactionId === transactionId)
+        .sort(
+          (a, b) =>
+            new Date(a.performedAt).getTime() -
+            new Date(b.performedAt).getTime()
+        );
     } catch (error) {
       console.error('Error getting workflow history:', error);
+      return [];
+    }
+  }
+
+  /**
+   * 全ワークフロー履歴取得（管理用）
+   */
+  async getAllWorkflowHistory(): Promise<WorkflowStep[]> {
+    await this.simulateApiDelay();
+
+    try {
+      const workflowHistory = reviveDatesInArray(
+        getStorageData<WorkflowStep>('workflowHistory') || []
+      );
+      return workflowHistory.sort(
+        (a, b) =>
+          new Date(b.performedAt).getTime() - new Date(a.performedAt).getTime()
+      );
+    } catch (error) {
+      console.error('Error getting all workflow history:', error);
       return [];
     }
   }
