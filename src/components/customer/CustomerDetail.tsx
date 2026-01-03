@@ -609,7 +609,9 @@ const CustomerDetail: React.FC = () => {
             <br />
             <br />
             この操作は取り消すことができません。
-            {accounts.some(account => account.status === 'active') && (
+            {accounts.some(
+              account => account.status === AccountStatus.ACTIVE
+            ) && (
               <>
                 <br />
                 <br />
@@ -629,7 +631,8 @@ const CustomerDetail: React.FC = () => {
             color="error"
             variant="contained"
             disabled={
-              deleting || accounts.some(account => account.status === 'active')
+              deleting ||
+              accounts.some(account => account.status === AccountStatus.ACTIVE)
             }
           >
             {deleting ? '削除中...' : '削除'}

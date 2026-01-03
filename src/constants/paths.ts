@@ -79,8 +79,8 @@ export const PATH_HIERARCHY = {
     label: '新規顧客登録',
     parent: PATHS.CUSTOMER_LIST,
   },
-  [PATHS.CUSTOMER_DETAIL]: { label: '顧客詳細', parent: PATHS.CUSTOMER_DETAIL },
-  [PATHS.CUSTOMER_EDIT]: { label: '顧客編集', parent: PATHS.CUSTOMER_EDIT },
+  [PATHS.CUSTOMER_DETAIL]: { label: '顧客詳細', parent: PATHS.CUSTOMER_LIST },
+  [PATHS.CUSTOMER_EDIT]: { label: '顧客編集', parent: PATHS.CUSTOMER_DETAIL },
 
   // 口座管理階層
   [PATHS.ACCOUNTS]: { label: '口座管理', parent: PATHS.DASHBOARD },

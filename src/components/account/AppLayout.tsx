@@ -2,33 +2,31 @@
  * アプリケーションレイアウトコンポーネント
  *
  * 認証後の共通レイアウト（ヘッダー、ナビゲーション、コンテンツエリア）
+ * 要件 10.1, 10.2 に対応したレスポンシブレイアウト
  */
 
 import React, { useState } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
 import {
   Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Chip,
-  Grid,
   AppBar,
   Toolbar,
   IconButton,
   Menu,
   MenuItem,
+  Typography,
+  useTheme,
+  useMediaQuery,
 } from '@mui/material';
 import {
   LogoutOutlined,
   SwitchAccountOutlined,
   PersonOutline,
   AdminPanelSettings,
-  MenuOutlined,
   AccountCircleOutlined,
 } from '@mui/icons-material';
 import UserSwitchModal from '../auth/UserSwitchModal.js';
+import ResponsiveLayout from '../shared/ResponsiveLayout.js';
 import { UserSession, UserRole } from '../../types/auth.js';
 import { ServiceFactory } from '../../services/common/serviceFactory.js';
 import { PATHS } from '../../constants/paths.js';
@@ -45,6 +43,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   onUserSwitch,
 }) => {
   const navigate = useNavigate();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [switchModalOpen, setSwitchModalOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(
     null
@@ -84,37 +84,53 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       {/* アプリケーションヘッダー */}
-      <AppBar position="static" elevation={1}>
+      <AppBar
+        position="fixed"
+        elevation={1}
+        sx={{
+          zIndex: theme.zIndex.drawer + 1,
+          backgroundColor: theme.palette.primary.main,
+        }}
+      >
         <Toolbar>
           <Typography
-            variant="h6"
+            variant={isMobile ? 'subtitle1' : 'h6'}
             component="div"
-            sx={{ flexGrow: 1, cursor: 'pointer' }}
+            sx={{
+              flexGrow: 1,
+              cursor: 'pointer',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
             onClick={() => navigate(PATHS.DASHBOARD)}
           >
-            金融系業務アプリケーション
+            {isMobile ? '金融業務アプリ' : '金融系業務アプリケーション'}
           </Typography>
 
           {/* ユーザー情報とメニュー */}
-          <Box display="flex" alignItems="center" gap={2}>
-            <Box display="flex" alignItems="center" gap={1}>
-              <RoleIcon />
-              <Box>
-                <Typography variant="body2">{session.userId}</Typography>
-                <Typography
-                  variant="caption"
-                  color="inherit"
-                  sx={{ opacity: 0.7 }}
-                >
-                  {roleText}
-                </Typography>
+          <Box display="flex" alignItems="center" gap={isMobile ? 1 : 2}>
+            {!isMobile && (
+              <Box display="flex" alignItems="center" gap={1}>
+                <RoleIcon />
+                <Box>
+                  <Typography variant="body2">{session.userId}</Typography>
+                  <Typography
+                    variant="caption"
+                    color="inherit"
+                    sx={{ opacity: 0.7 }}
+                  >
+                    {roleText}
+                  </Typography>
+                </Box>
               </Box>
-            </Box>
+            )}
 
             <IconButton
               color="inherit"
               onClick={handleUserMenuOpen}
               aria-label="ユーザーメニュー"
+              size={isMobile ? 'small' : 'medium'}
             >
               <AccountCircleOutlined />
             </IconButton>
@@ -132,6 +148,16 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 horizontal: 'right',
               }}
             >
+              {isMobile && (
+                <MenuItem disabled>
+                  <Box>
+                    <Typography variant="body2">{session.userId}</Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {roleText}
+                    </Typography>
+                  </Box>
+                </MenuItem>
+              )}
               <MenuItem
                 onClick={() => {
                   handleUserMenuClose();
@@ -155,9 +181,13 @@ const AppLayout: React.FC<AppLayoutProps> = ({
         </Toolbar>
       </AppBar>
 
-      {/* メインコンテンツエリア */}
-      <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
-        <Outlet />
+      {/* メインコンテンツエリア（レスポンシブレイアウト使用） */}
+      <Box sx={{ mt: 8 }}>
+        {' '}
+        {/* AppBarの高さ分のマージン */}
+        <ResponsiveLayout session={session}>
+          <Outlet />
+        </ResponsiveLayout>
       </Box>
 
       {/* 利用者切替モーダル */}
