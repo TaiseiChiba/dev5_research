@@ -83,12 +83,14 @@ export class AccountService {
     }
 
     // 日付文字列をDateオブジェクトに変換
-    const accounts = result.accounts.map((account: any) => ({
-      ...account,
-      createdAt: new Date(account.createdAt),
-      updatedAt: new Date(account.updatedAt),
-      balance: parseFloat(account.balance), // Decimal型を数値に変換
-    }));
+    const accounts = (result.accounts || result.data || []).map(
+      (account: any) => ({
+        ...account,
+        createdAt: new Date(account.createdAt),
+        updatedAt: new Date(account.updatedAt),
+        balance: parseFloat(account.balance), // Decimal型を数値に変換
+      })
+    );
 
     return accounts;
   }
@@ -112,12 +114,14 @@ export class AccountService {
     }
 
     // 日付文字列をDateオブジェクトに変換
-    const accounts = result.accounts.map((account: any) => ({
-      ...account,
-      createdAt: new Date(account.createdAt),
-      updatedAt: new Date(account.updatedAt),
-      balance: parseFloat(account.balance), // Decimal型を数値に変換
-    }));
+    const accounts = (result.accounts || result.data || []).map(
+      (account: any) => ({
+        ...account,
+        createdAt: new Date(account.createdAt),
+        updatedAt: new Date(account.updatedAt),
+        balance: parseFloat(account.balance), // Decimal型を数値に変換
+      })
+    );
 
     return accounts;
   }

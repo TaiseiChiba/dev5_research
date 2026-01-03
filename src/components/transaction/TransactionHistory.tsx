@@ -255,9 +255,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
 
       // 口座（振込元または振込先）
       if (searchForm.accountId) {
-        criteria.sourceAccountId = searchForm.accountId;
-        // 振込先も同じ口座で検索する場合は以下も追加
-        // criteria.destinationAccountId = searchForm.accountId;
+        criteria.accountId = searchForm.accountId;
       }
 
       // 取引種別
@@ -332,7 +330,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = () => {
         ? criteria.dateTo.toISOString().split('T')[0]
         : '',
       customerId: criteria.customerId || '',
-      accountId: criteria.sourceAccountId || '',
+      accountId: criteria.accountId || criteria.sourceAccountId || '',
       transactionType: criteria.type || '',
     });
 

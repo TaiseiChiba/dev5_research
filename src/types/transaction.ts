@@ -84,6 +84,7 @@ export interface TransactionSearchCriteria extends BaseSearchCriteria {
   status?: TransactionStatus;
   sourceAccountId?: string;
   destinationAccountId?: string;
+  accountId?: string; // 振込元または振込先のいずれかに含まれる口座ID
   customerId?: string;
   createdBy?: string;
   dateFrom?: Date;
