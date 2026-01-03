@@ -28,6 +28,8 @@ import { useNavigate } from 'react-router-dom';
 import { PATHS } from '../../constants/paths';
 import { ServiceFactory } from '../../services/common/serviceFactory';
 import { TransactionStatusManager } from '../workflow/TransactionStatusManager';
+import { WorkflowProgressIndicator } from '../workflow/WorkflowProgressIndicator';
+import { useTransactionWorkflowGuard } from '../../hooks/useWorkflowGuard';
 import type {
   Transaction,
   TransactionType,
@@ -44,6 +46,11 @@ export const TransactionVerification: React.FC<
   TransactionVerificationProps
 > = ({ session }) => {
   const navigate = useNavigate();
+
+  // ワークフロー制御
+  const { progress, isTransitionAllowed, blockReason } =
+    useTransactionWorkflowGuard();
+
   const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>(
     []
   );
@@ -145,213 +152,248 @@ export const TransactionVerification: React.FC<
 
   return (
     <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
-      {/* ヘッダーセクション */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'flex-start',
-              flexWrap: 'wrap',
-              gap: 2,
-            }}
-          >
-            <Box>
-              <Typography variant="h4" component="h1" gutterBottom>
-                取引検証（ダブルチェック）
-              </Typography>
-              <Typography color="text.secondary">
-                検証待ちの取引を確認し、適切な検証アクションを実行してください
-              </Typography>
-            </Box>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => navigate(PATHS.TRANSACTION_INPUT)}
-              size="large"
-            >
-              新規取引入力
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
-
-      {/* 成功メッセージ */}
-      {successMessage && (
-        <Alert
-          severity="success"
-          sx={{ mb: 3 }}
-          onClose={() => setSuccessMessage(null)}
-        >
-          {successMessage}
-        </Alert>
-      )}
-
-      {/* エラーメッセージ */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 3 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
-      )}
-
-      {/* メインコンテンツ */}
-      {pendingTransactions.length === 0 ? (
-        <Card>
-          <CardContent sx={{ textAlign: 'center', py: 8 }}>
-            <AccountBalanceIcon
-              sx={{ fontSize: 80, color: 'text.disabled', mb: 2 }}
-            />
-            <Typography variant="h5" gutterBottom>
-              検証待ちの取引はありません
-            </Typography>
-            <Typography
-              color="text.secondary"
-              sx={{ mb: 4, maxWidth: 400, mx: 'auto' }}
-            >
-              新しい取引が入力されると、ここに表示されます。取引の入力から始めましょう。
-            </Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => navigate(PATHS.TRANSACTION_INPUT)}
-              size="large"
-            >
-              取引を入力する
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          {/* 統計情報ヘッダー */}
-          <CardContent
-            sx={{
-              bgcolor: 'primary.50',
-              borderBottom: 1,
-              borderColor: 'divider',
-            }}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}
-            >
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <AccountBalanceIcon color="primary" sx={{ fontSize: 40 }} />
+      <Grid container spacing={3}>
+        {/* メインコンテンツ */}
+        <Grid item xs={12} md={8}>
+          {/* ヘッダーセクション */}
+          <Card sx={{ mb: 3 }}>
+            <CardContent>
+              <Box
+                sx={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  flexWrap: 'wrap',
+                  gap: 2,
+                }}
+              >
                 <Box>
-                  <Typography variant="h6">検証待ち取引一覧</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {pendingTransactions.length}件の取引が検証を待っています
+                  <Typography variant="h4" component="h1" gutterBottom>
+                    取引検証（ダブルチェック）
+                  </Typography>
+                  <Typography color="text.secondary">
+                    検証待ちの取引を確認し、適切な検証アクションを実行してください
                   </Typography>
                 </Box>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => navigate(PATHS.TRANSACTION_INPUT)}
+                  size="large"
+                >
+                  新規取引入力
+                </Button>
               </Box>
-              <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="h3" color="primary" fontWeight="bold">
-                  {pendingTransactions.length}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  件
-                </Typography>
-              </Box>
-            </Box>
-          </CardContent>
+            </CardContent>
+          </Card>
 
-          {/* テーブル */}
-          <TableContainer>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>取引情報</TableCell>
-                  <TableCell>種別・金額</TableCell>
-                  <TableCell>作成者・日時</TableCell>
-                  <TableCell>状態</TableCell>
-                  <TableCell>操作</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {pendingTransactions.map(transaction => (
-                  <TableRow
-                    key={transaction.transactionId}
-                    hover
-                    sx={{ '&:hover': { bgcolor: 'action.hover' } }}
-                  >
-                    <TableCell>
-                      <Box>
-                        <Typography
-                          variant="body2"
-                          color="primary"
-                          fontWeight="medium"
-                        >
-                          {transaction.transactionId}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          取引ID
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box>
-                        <Chip
-                          label={getTransactionTypeLabel(transaction.type)}
-                          color={getTransactionTypeColor(transaction.type)}
-                          size="small"
-                          sx={{ mb: 1 }}
-                        />
-                        <Typography variant="h6" fontWeight="bold">
-                          ¥{transaction.amount.toLocaleString()}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Box>
-                        <Typography variant="body2" fontWeight="medium">
-                          {transaction.createdBy}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {new Date(transaction.createdAt).toLocaleString(
-                            'ja-JP'
+          {/* ワークフロー制御の警告 */}
+          {!isTransitionAllowed && blockReason && (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+              {blockReason}
+            </Alert>
+          )}
+
+          {/* 成功メッセージ */}
+          {successMessage && (
+            <Alert
+              severity="success"
+              sx={{ mb: 3 }}
+              onClose={() => setSuccessMessage(null)}
+            >
+              {successMessage}
+            </Alert>
+          )}
+
+          {/* エラーメッセージ */}
+          {error && (
+            <Alert
+              severity="error"
+              sx={{ mb: 3 }}
+              onClose={() => setError(null)}
+            >
+              {error}
+            </Alert>
+          )}
+
+          {/* メインコンテンツ */}
+          {pendingTransactions.length === 0 ? (
+            <Card>
+              <CardContent sx={{ textAlign: 'center', py: 8 }}>
+                <AccountBalanceIcon
+                  sx={{ fontSize: 80, color: 'text.disabled', mb: 2 }}
+                />
+                <Typography variant="h5" gutterBottom>
+                  検証待ちの取引はありません
+                </Typography>
+                <Typography
+                  color="text.secondary"
+                  sx={{ mb: 4, maxWidth: 400, mx: 'auto' }}
+                >
+                  新しい取引が入力されると、ここに表示されます。取引の入力から始めましょう。
+                </Typography>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => navigate(PATHS.TRANSACTION_INPUT)}
+                  size="large"
+                >
+                  取引を入力する
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              {/* 統計情報ヘッダー */}
+              <CardContent
+                sx={{
+                  bgcolor: 'primary.50',
+                  borderBottom: 1,
+                  borderColor: 'divider',
+                }}
+              >
+                <Box
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <AccountBalanceIcon color="primary" sx={{ fontSize: 40 }} />
+                    <Box>
+                      <Typography variant="h6">検証待ち取引一覧</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {pendingTransactions.length}件の取引が検証を待っています
+                      </Typography>
+                    </Box>
+                  </Box>
+                  <Box sx={{ textAlign: 'right' }}>
+                    <Typography variant="h3" color="primary" fontWeight="bold">
+                      {pendingTransactions.length}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      件
+                    </Typography>
+                  </Box>
+                </Box>
+              </CardContent>
+
+              {/* テーブル */}
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>取引情報</TableCell>
+                      <TableCell>種別・金額</TableCell>
+                      <TableCell>作成者・日時</TableCell>
+                      <TableCell>状態</TableCell>
+                      <TableCell>操作</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {pendingTransactions.map(transaction => (
+                      <TableRow
+                        key={transaction.transactionId}
+                        hover
+                        sx={{ '&:hover': { bgcolor: 'action.hover' } }}
+                      >
+                        <TableCell>
+                          <Box>
+                            <Typography
+                              variant="body2"
+                              color="primary"
+                              fontWeight="medium"
+                            >
+                              {transaction.transactionId}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              取引ID
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Box>
+                            <Chip
+                              label={getTransactionTypeLabel(transaction.type)}
+                              color={getTransactionTypeColor(transaction.type)}
+                              size="small"
+                              sx={{ mb: 1 }}
+                            />
+                            <Typography variant="h6" fontWeight="bold">
+                              ¥{transaction.amount.toLocaleString()}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {transaction.createdBy}
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {new Date(transaction.createdAt).toLocaleString(
+                                'ja-JP'
+                              )}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                        <TableCell>
+                          <Chip
+                            label="検証待ち"
+                            color="warning"
+                            variant="outlined"
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {canVerifyTransaction(transaction) ? (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              startIcon={<SettingsIcon />}
+                              onClick={() =>
+                                setSelectedTransaction(transaction)
+                              }
+                            >
+                              状態管理
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              disabled
+                              startIcon={<CancelIcon />}
+                            >
+                              検証不可（自己作成）
+                            </Button>
                           )}
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label="検証待ち"
-                        color="warning"
-                        variant="outlined"
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {canVerifyTransaction(transaction) ? (
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          startIcon={<SettingsIcon />}
-                          onClick={() => setSelectedTransaction(transaction)}
-                        >
-                          状態管理
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          disabled
-                          startIcon={<CancelIcon />}
-                        >
-                          検証不可（自己作成）
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        </Card>
-      )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Card>
+          )}
+        </Grid>
+
+        {/* サイドバー - ワークフロー情報 */}
+        <Grid item xs={12} md={4}>
+          {progress && (
+            <WorkflowProgressIndicator
+              progress={progress}
+              variant="vertical"
+              showActions={false}
+            />
+          )}
+        </Grid>
+      </Grid>
 
       {/* 取引状態管理モーダル */}
       {selectedTransaction && (

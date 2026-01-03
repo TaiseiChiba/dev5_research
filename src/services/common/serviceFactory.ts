@@ -9,6 +9,7 @@ import { CustomerService } from '../customer/customerService.js';
 import { AccountService } from '../account/accountService.js';
 import { TransactionService } from '../transaction/transactionService.js';
 import { WorkflowService } from '../workflow/workflowService.js';
+import { WorkflowOrderService } from '../workflow/workflowOrderService.js';
 import { initializeMockData } from '../../data/mockData.js';
 
 /**
@@ -22,6 +23,7 @@ export class ServiceFactory {
   private accountService: AccountService;
   private transactionService: TransactionService;
   private workflowService: WorkflowService;
+  private workflowOrderService: WorkflowOrderService;
 
   private constructor() {
     // サービスインスタンスを初期化
@@ -30,6 +32,7 @@ export class ServiceFactory {
     this.accountService = new AccountService();
     this.transactionService = new TransactionService();
     this.workflowService = new WorkflowService();
+    this.workflowOrderService = new WorkflowOrderService();
   }
 
   /**
@@ -96,6 +99,13 @@ export class ServiceFactory {
   }
 
   /**
+   * ワークフロー順序制御サービス取得
+   */
+  public getWorkflowOrderService(): WorkflowOrderService {
+    return this.workflowOrderService;
+  }
+
+  /**
    * 全サービスのリセット（テスト用）
    */
   public reset(): void {
@@ -108,6 +118,7 @@ export class ServiceFactory {
     this.accountService = new AccountService();
     this.transactionService = new TransactionService();
     this.workflowService = new WorkflowService();
+    this.workflowOrderService = new WorkflowOrderService();
 
     // モックデータを再初期化
     initializeMockData();
