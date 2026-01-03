@@ -6,8 +6,6 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
-  Card,
-  CardContent,
   Typography,
   List,
   ListItem,
@@ -99,35 +97,10 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
     },
   ];
 
-  const roleText =
-    session.userRole === UserRole.ADMINISTRATOR ? '管理者' : '一般行員';
-
   return (
     <Box>
-      {/* ウェルカムメッセージ */}
-      <Card elevation={3} sx={{ mb: 4 }}>
-        <CardContent sx={{ textAlign: 'center', py: 4 }}>
-          <Typography variant="h4" gutterBottom color="primary">
-            金融系業務アプリケーションへようこそ
-          </Typography>
-          <Typography variant="h6" gutterBottom>
-            ログインが完了しました
-          </Typography>
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
-            利用者区分: {roleText}
-          </Typography>
-          <Typography variant="body1" color="text.secondary">
-            利用者ID: {session.userId}
-          </Typography>
-          <Divider sx={{ my: 3 }} />
-          <Typography variant="body2" color="text.secondary">
-            サンプル顧客、口座、取引データが利用可能です。
-          </Typography>
-        </CardContent>
-      </Card>
-
       {/* 利用可能な機能 */}
-      <Paper elevation={2} sx={{ p: 3 }}>
+      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
         <Typography variant="h5" gutterBottom color="primary">
           利用可能な機能
         </Typography>

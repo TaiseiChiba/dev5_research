@@ -5,14 +5,19 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography } from '@mui/material';
 import AppRouter from './components/common/AppRouter.js';
+import {
+  MessageProvider,
+  useNotification,
+} from './components/shared/MessageContext.js';
 import { ServiceFactory } from './services/common/serviceFactory.js';
 import { UserSession } from './types/auth.js';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [currentSession, setCurrentSession] = useState<UserSession | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(true);
+  const notification = useNotification();
 
   useEffect(() => {
     initializeApp();
@@ -42,6 +47,13 @@ const App: React.FC = () => {
 
   const handleLoginSuccess = (session: UserSession) => {
     setCurrentSession(session);
+
+    // ログイン成功通知を表示
+    const roleText =
+      session.userRole === 'ADMINISTRATOR' ? '管理者' : '一般行員';
+    notification.success(
+      `ログインが完了しました。利用者: ${session.userId} (${roleText})`
+    );
   };
 
   const handleLogout = () => {
@@ -50,6 +62,13 @@ const App: React.FC = () => {
 
   const handleUserSwitch = (session: UserSession) => {
     setCurrentSession(session);
+
+    // 利用者切替成功通知を表示
+    const roleText =
+      session.userRole === 'ADMINISTRATOR' ? '管理者' : '一般行員';
+    notification.success(
+      `利用者を切り替えました。利用者: ${session.userId} (${roleText})`
+    );
   };
 
   if (isLoading) {
@@ -72,6 +91,14 @@ const App: React.FC = () => {
       onLogout={handleLogout}
       onUserSwitch={handleUserSwitch}
     />
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <MessageProvider>
+      <AppContent />
+    </MessageProvider>
   );
 };
 
