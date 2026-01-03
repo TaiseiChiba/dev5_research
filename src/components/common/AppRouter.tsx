@@ -21,6 +21,7 @@ import AccountCreate from '../account/AccountCreate.js';
 import TransactionInput from '../transaction/TransactionInput.js';
 import TransactionConfirmation from '../transaction/TransactionConfirmation.js';
 import TransactionConfirmationScreen from '../transaction/TransactionConfirmationScreen.js';
+import TransactionHistory from '../transaction/TransactionHistory.js';
 import { TransactionVerification } from '../transaction/TransactionVerification.js';
 import { NotFoundError, UnauthorizedError, ServerError } from './ErrorPages.js';
 import { UserSession } from '../../types/auth.js';
@@ -116,6 +117,10 @@ const AppRouter: React.FC<AppRouterProps> = ({
                   <TransactionConfirmationScreen session={session!} />
                 </ProtectedRoute>
               }
+            />
+            <Route
+              path="history"
+              element={<TransactionHistory session={session!} />}
             />
           </Route>
 

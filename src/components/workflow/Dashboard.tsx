@@ -95,7 +95,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
       icon: <HistoryOutlined />,
       title: '取引履歴照会',
       description: '過去の取引履歴の検索と表示機能',
-      action: null,
+      action: () => navigate(PATHS.TRANSACTION_HISTORY),
     },
   ];
 
