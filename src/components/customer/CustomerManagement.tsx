@@ -48,10 +48,14 @@ import {
 } from '../../types/customer';
 import { ServiceFactory } from '../../services/common/serviceFactory';
 import { generatePath, PATHS } from '../../constants/paths';
+import { usePageTitle } from '../../hooks/usePageTitle.js';
 
 const CustomerManagement: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // ページタイトル設定
+  usePageTitle();
 
   // 状態管理
   const [customers, setCustomers] = useState<Customer[]>([]);

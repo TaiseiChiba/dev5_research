@@ -31,6 +31,7 @@ import ResponsiveLayout from '../shared/ResponsiveLayout.js';
 import { UserSession, UserRole } from '../../types/auth.js';
 import { ServiceFactory } from '../../services/common/serviceFactory.js';
 import { PATHS } from '../../constants/paths.js';
+import { usePageTitle } from '../../hooks/usePageTitle.js';
 
 interface AppLayoutProps {
   session: UserSession;
@@ -52,6 +53,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   );
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [desktopNavOpen, setDesktopNavOpen] = useState(false);
+
+  // ページタイトル管理
+  usePageTitle();
 
   const handleLogout = async () => {
     try {
@@ -136,7 +140,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
             }}
             onClick={() => navigate(PATHS.DASHBOARD)}
           >
-            {isMobile ? '金融業務アプリ' : '金融系業務アプリケーション'}
+            {isMobile ? 'ゴブコパ' : 'ゴブコパ'}
           </Typography>
 
           {/* ユーザー情報とメニュー */}

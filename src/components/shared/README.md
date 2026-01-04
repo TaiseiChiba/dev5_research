@@ -4,7 +4,7 @@
 
 ## 概要
 
-金融系業務アプリケーションにおいて、一貫したユーザーフィードバックを提供するための包括的なメッセージシステムです。
+ゴブコパにおいて、一貫したユーザーフィードバックを提供するための包括的なメッセージシステムです。
 
 ### 主要機能
 
@@ -301,6 +301,6 @@ function CustomerForm() {
 
 ## 参考
 
-- 要件定義書: `.kiro/specs/financial-business-app/requirements.md`
-- 設計文書: `.kiro/specs/financial-business-app/design.md`
+- 要件定義書: `.kiro/specs/app-name-change/requirements.md`
+- 設計文書: `.kiro/specs/app-name-change/design.md`
 - 実装例: `MessageExample.tsx`

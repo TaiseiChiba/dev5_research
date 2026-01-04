@@ -31,6 +31,7 @@ import {
 import { ServiceFactory } from '../../services/common/serviceFactory.js';
 import { UserRole, LoginRequest, UserSession } from '../../types/auth.js';
 import { PATHS } from '../../constants/paths.js';
+import { usePageTitle } from '../../hooks/usePageTitle.js';
 
 interface LoginScreenProps {
   onLoginSuccess: (session: UserSession) => void;
@@ -52,6 +53,9 @@ interface FormErrors {
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // ページタイトル設定
+  usePageTitle();
 
   // ログイン前にアクセスしようとしたパスを取得
   const from = (location.state as any)?.from || PATHS.DASHBOARD;

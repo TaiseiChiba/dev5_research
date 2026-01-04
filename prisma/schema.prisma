@@ -1,4 +1,4 @@
-// 金融系業務アプリケーション - Prismaスキーマ
+// ゴブコパ - Prismaスキーマ
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
