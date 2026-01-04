@@ -48,6 +48,7 @@ export interface Transaction {
  * 取引入力データ
  */
 export interface TransactionInput {
+  transactionId?: string; // 既存取引の場合のID
   type: TransactionType;
   sourceAccountId?: string;
   destinationAccountId?: string;

@@ -15,14 +15,10 @@ import {
   Alert,
   CircularProgress,
 } from '@mui/material';
-import {
-  Add as AddIcon,
-  CheckCircle as CheckCircleIcon,
-} from '@mui/icons-material';
+import { CheckCircle as CheckCircleIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { PATHS } from '../../constants/paths';
 import { ServiceFactory } from '../../services/common/serviceFactory';
-import { useNavigation } from '../../contexts/NavigationContext';
 import type { Transaction } from '../../types/transaction';
 import type { UserSession } from '../../types/auth';
 
@@ -32,9 +28,8 @@ interface TransactionVerificationTestProps {
 
 export const TransactionVerificationTest: React.FC<
   TransactionVerificationTestProps
-> = ({ session }) => {
+> = () => {
   const navigate = useNavigate();
-  const { navigateWithData } = useNavigation();
 
   const [pendingTransactions, setPendingTransactions] = useState<Transaction[]>(
     []
@@ -89,7 +84,10 @@ export const TransactionVerificationTest: React.FC<
 
   const handleFinalConfirmation = (transaction: Transaction) => {
     console.log('最終確認画面に遷移:', transaction);
-    navigateWithData(PATHS.TRANSACTION_FINAL_CONFIRMATION, transaction);
+    // URLパラメータとして取引IDを渡す
+    navigate(
+      `${PATHS.TRANSACTION_FINAL_CONFIRMATION}?transactionId=${transaction.transactionId}`
+    );
   };
 
   if (loading) {

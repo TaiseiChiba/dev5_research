@@ -113,6 +113,10 @@ const TransactionConfirmationScreen: React.FC<
 
         console.log('=== TransactionConfirmationScreen データ取得開始 ===');
 
+        // URLパラメータから取引IDを取得
+        const urlParams = new URLSearchParams(location.search);
+        const transactionIdFromUrl = urlParams.get('transactionId');
+
         // NavigationContextから直接データを取得
         const navigationData = getNavigationData<TransactionInputData>();
         console.log('navigationData from context:', navigationData);
@@ -121,21 +125,51 @@ const TransactionConfirmationScreen: React.FC<
         const stateData = location.state as {
           transactionData?: TransactionInputData;
           navigationData?: TransactionInputData;
+          transactionId?: string;
         };
         console.log('location.state:', location.state);
 
-        // データの優先順位: NavigationContext > location.state
+        // データの優先順位: NavigationContext > location.state > URLパラメータ
         let inputData: TransactionInputData | undefined =
           navigationData ||
           stateData?.navigationData ||
           stateData?.transactionData;
 
+        const transactionId = stateData?.transactionId || transactionIdFromUrl;
+
         console.log('最終的な inputData:', inputData);
+        console.log('transactionId:', transactionId);
+
+        // NavigationContextにデータがない場合、取引IDから詳細を取得
+        if (!inputData && transactionId) {
+          console.log('取引IDから詳細データを取得:', transactionId);
+
+          try {
+            const transactionDetail =
+              await transactionService.getTransactionDetail(transactionId);
+            console.log('取得した取引詳細:', transactionDetail);
+
+            // Transaction型からTransactionInputData型に変換
+            inputData = {
+              type: transactionDetail.type,
+              sourceAccountId: transactionDetail.sourceAccountId,
+              destinationAccountId: transactionDetail.destinationAccountId,
+              amount: transactionDetail.amount,
+              description: transactionDetail.description,
+              transactionDate: transactionDetail.createdAt,
+              transactionId: transactionDetail.transactionId,
+            } as TransactionInputData & { transactionId: string };
+          } catch (apiError) {
+            console.error('取引詳細の取得に失敗:', apiError);
+            setError('取引詳細の取得に失敗しました。');
+            return;
+          }
+        }
 
         if (!inputData) {
           console.error('取引データが見つかりません');
           setError(
-            '取引データが見つかりません。取引入力画面からやり直してください。'
+            '取引データが見つかりません。取引検証画面から対象の取引を選択してください。'
           );
           return;
         }
@@ -182,10 +216,12 @@ const TransactionConfirmationScreen: React.FC<
         const transactionDate =
           inputData.transactionDate instanceof Date
             ? inputData.transactionDate
-            : new Date(inputData.transactionDate);
+            : inputData.transactionDate
+              ? new Date(inputData.transactionDate)
+              : new Date();
 
         setTransactionData({
-          transactionId: inputData.transactionId,
+          transactionId: (inputData as any).transactionId,
           type: inputData.type,
           sourceAccountId: inputData.sourceAccountId,
           destinationAccountId: inputData.destinationAccountId,
@@ -376,7 +412,7 @@ const TransactionConfirmationScreen: React.FC<
           </Button>
           <Button
             variant="contained"
-            onClick={() => navigate(PATHS.TRANSACTION_VERIFICATION)}
+            onClick={() => navigate(PATHS.TRANSACTION_FINAL_CONFIRMATION)}
           >
             取引検証画面へ
           </Button>

@@ -118,6 +118,14 @@ const AppRouter: React.FC<AppRouterProps> = ({
             path="final-confirmation"
             element={
               <ProtectedRoute adminOnly>
+                <TransactionVerificationTest session={session!} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="final-confirmation/:transactionId"
+            element={
+              <ProtectedRoute adminOnly>
                 <TransactionConfirmationScreen session={session!} />
               </ProtectedRoute>
             }
