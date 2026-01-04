@@ -325,33 +325,69 @@
 
 ### 完了済み（✅）
 
-- プロジェクト基盤とビルド環境
-- TypeScript型定義システム
-- 認証・セッション管理（フロントエンド・バックエンド）
-- 顧客管理の基本機能（一覧・検索）
-- データベース設計とシードデータ
-- 基本的なテストカバレッジ
-- **React Router DOM ルーティングシステム**
-  - パッケージインストール（react-router-dom v7.11.0）
+- **プロジェクト基盤とビルド環境**
+  - Vite開発環境
+  - TypeScript設定
+  - ESLint/Prettier設定
+  - Jest テストフレームワーク
+
+- **バックエンドインフラ**
+  - PostgreSQL + Prisma ORM完全実装
+  - Express.js APIサーバー
+  - bcryptパスワードハッシュ化
+  - 認証・顧客管理API
+
+- **フロントエンドアーキテクチャ**
+  - React 18 + TypeScript
+  - Material-UI v5統合
+  - ServiceFactory パターン
+  - 完全なTypeScript型システム
+
+- **ルーティングシステム**
+  - React Router DOM v7.11.0
   - パス定義ファイル（paths.ts）
-  - ルーティング設定（AppRouter.tsx）
   - 認証ガード（ProtectedRoute.tsx）
   - エラーページ（404, 401, 500）
   - アプリレイアウト（AppLayout.tsx）
-  - ダッシュボード（Dashboard.tsx）
+
+- **認証・セッション管理**
+  - ログイン画面（LoginScreen.tsx）
+  - セッション管理
+  - ユーザー切替機能（UserSwitchModal.tsx）
+
+- **顧客管理機能**
+  - 顧客一覧・検索（CustomerManagement.tsx）
+  - 顧客詳細表示（CustomerDetail.tsx）
+  - 顧客編集（CustomerEdit.tsx）
+  - 顧客作成（CustomerCreate.tsx）
+
+- **取引管理基盤**
+  - 取引入力画面（TransactionInput.tsx）
+  - 取引確認画面（TransactionConfirmation.tsx）
+  - 取引検証画面（TransactionVerification.tsx）
+  - 取引履歴画面（TransactionHistory.tsx）
+
+- **ダッシュボード**
+  - メイン画面（Dashboard.tsx）
+  - 機能メニュー
 
 ### 進行中（🚧）
 
-- 顧客詳細・編集機能（基本実装済み、ルーティング統合が必要）
-- バックエンドAPI の完全実装（基本認証・顧客管理API実装済み）
+- **口座管理機能**
+  - 基本コンポーネント実装済み
+  - ルーティング統合が必要
+
+- **取引ワークフロー**
+  - 基本画面実装済み
+  - 状態管理の完全実装が必要
 
 ### 未着手（⏳）
 
-- 口座管理機能
-- 取引処理ワークフロー
-- 取引履歴照会
-- 統合テストとE2Eテスト
-- パンくずナビゲーション機能
+- **統合テスト**
+- **プロパティベーステスト**
+- **パンくずナビゲーション**
+- **エラーハンドリングの統一**
+- **パフォーマンス最適化**
 
 ## React Router DOM 実装状況
 
