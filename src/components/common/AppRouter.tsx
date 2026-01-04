@@ -23,6 +23,7 @@ import TransactionConfirmation from '../transaction/TransactionConfirmation.js';
 import TransactionConfirmationScreen from '../transaction/TransactionConfirmationScreen.js';
 import TransactionHistory from '../transaction/TransactionHistory.js';
 import { TransactionVerification } from '../transaction/TransactionVerification.js';
+import { TransactionVerificationTest } from '../transaction/TransactionVerificationTest.js';
 import { NotFoundError, UnauthorizedError, ServerError } from './ErrorPages.js';
 import { UserSession } from '../../types/auth.js';
 import { PATHS } from '../../constants/paths.js';
@@ -108,6 +109,10 @@ const AppRouter: React.FC<AppRouterProps> = ({
           <Route
             path="verification"
             element={<TransactionVerification session={session!} />}
+          />
+          <Route
+            path="verification-test"
+            element={<TransactionVerificationTest session={session!} />}
           />
           <Route
             path="final-confirmation"

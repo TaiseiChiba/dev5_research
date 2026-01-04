@@ -46,6 +46,7 @@ interface TransactionConfirmationScreenProps {
 }
 
 interface TransactionConfirmationData {
+  transactionId?: string;
   type: TransactionType;
   sourceAccountId?: string;
   destinationAccountId?: string;
@@ -61,7 +62,8 @@ const TransactionConfirmationScreen: React.FC<
 > = ({ session }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { navigateWithData, setBreadcrumbs } = useNavigation();
+  const { navigateWithData, setBreadcrumbs, getNavigationData } =
+    useNavigation();
 
   const transactionService =
     ServiceFactory.getInstance().getTransactionService();
@@ -109,19 +111,36 @@ const TransactionConfirmationScreen: React.FC<
       try {
         setLoading(true);
 
-        // location.stateから取引データを取得
+        console.log('=== TransactionConfirmationScreen データ取得開始 ===');
+
+        // NavigationContextから直接データを取得
+        const navigationData = getNavigationData<TransactionInputData>();
+        console.log('navigationData from context:', navigationData);
+
+        // location.stateからも取得を試行
         const stateData = location.state as {
           transactionData?: TransactionInputData;
+          navigationData?: TransactionInputData;
         };
+        console.log('location.state:', location.state);
 
-        if (!stateData?.transactionData) {
+        // データの優先順位: NavigationContext > location.state
+        let inputData: TransactionInputData | undefined =
+          navigationData ||
+          stateData?.navigationData ||
+          stateData?.transactionData;
+
+        console.log('最終的な inputData:', inputData);
+
+        if (!inputData) {
+          console.error('取引データが見つかりません');
           setError(
             '取引データが見つかりません。取引入力画面からやり直してください。'
           );
           return;
         }
 
-        const inputData = stateData.transactionData;
+        console.log('Loading transaction data:', inputData);
 
         // 口座一覧と顧客一覧を取得
         const [accountList, customerList] = await Promise.all([
@@ -159,13 +178,20 @@ const TransactionConfirmationScreen: React.FC<
             )
           : undefined;
 
+        // transactionDateがstringの場合はDateに変換
+        const transactionDate =
+          inputData.transactionDate instanceof Date
+            ? inputData.transactionDate
+            : new Date(inputData.transactionDate);
+
         setTransactionData({
+          transactionId: inputData.transactionId,
           type: inputData.type,
           sourceAccountId: inputData.sourceAccountId,
           destinationAccountId: inputData.destinationAccountId,
           amount: inputData.amount,
           description: inputData.description,
-          transactionDate: inputData.transactionDate || new Date(),
+          transactionDate,
           sourceAccount,
           destinationAccount,
         });
@@ -178,7 +204,7 @@ const TransactionConfirmationScreen: React.FC<
     };
 
     loadTransactionData();
-  }, [location.state, accountService, customerService]);
+  }, [getNavigationData, location.state, accountService, customerService]);
 
   // 取引タイプのラベル取得
   const getTransactionTypeLabel = (type: TransactionType): string => {
@@ -240,7 +266,7 @@ const TransactionConfirmationScreen: React.FC<
     }
   };
 
-  // 確認ボタンのハンドラー（一次入力完了処理）
+  // 確認ボタンのハンドラー（取引確定処理）
   const handleConfirm = async () => {
     if (!transactionData || !session?.userId) {
       setError('セッション情報が不正です。再ログインしてください。');
@@ -257,34 +283,52 @@ const TransactionConfirmationScreen: React.FC<
       setSubmitting(true);
       setError('');
 
-      const inputData: TransactionInputData = {
-        type: transactionData.type,
-        sourceAccountId: transactionData.sourceAccountId,
-        destinationAccountId: transactionData.destinationAccountId,
-        amount: transactionData.amount,
-        description: transactionData.description,
-        transactionDate: transactionData.transactionDate,
-      };
+      // 既存の検証済み取引を確定する
+      if (transactionData.transactionId) {
+        console.log(
+          'Confirming existing transaction:',
+          transactionData.transactionId
+        );
+        const result = await transactionService.confirmTransaction(
+          transactionData.transactionId,
+          session.userId
+        );
+        console.log('Transaction confirmed successfully:', result);
 
-      console.log('Creating transaction with confirmed data:', inputData);
-      const result = await transactionService.createTransaction(
-        inputData,
-        session.userId
-      );
-      console.log('Transaction created successfully:', result);
+        setSuccessMessage(
+          `取引が正常に確定されました。取引ID: ${transactionData.transactionId}`
+        );
+      } else {
+        // 新規取引作成（従来の処理）
+        const inputData: TransactionInputData = {
+          type: transactionData.type,
+          sourceAccountId: transactionData.sourceAccountId,
+          destinationAccountId: transactionData.destinationAccountId,
+          amount: transactionData.amount,
+          description: transactionData.description,
+          transactionDate: transactionData.transactionDate,
+        };
 
-      setSuccessMessage(
-        `取引が正常に作成されました。取引ID: ${result.transactionId}`
-      );
+        console.log('Creating new transaction:', inputData);
+        const result = await transactionService.createTransaction(
+          inputData,
+          session.userId
+        );
+        console.log('Transaction created successfully:', result);
+
+        setSuccessMessage(
+          `取引が正常に作成されました。取引ID: ${result.transactionId}`
+        );
+      }
 
       // 3秒後に検証画面に遷移
       setTimeout(() => {
         navigateWithData(PATHS.TRANSACTION_VERIFICATION);
       }, 3000);
     } catch (error) {
-      console.error('取引作成エラー:', error);
+      console.error('取引処理エラー:', error);
       setError(
-        error instanceof Error ? error.message : '取引の作成に失敗しました。'
+        error instanceof Error ? error.message : '取引の処理に失敗しました。'
       );
     } finally {
       setSubmitting(false);
@@ -306,228 +350,274 @@ const TransactionConfirmationScreen: React.FC<
 
   if (!transactionData) {
     return (
-      <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
-        <Alert severity="error" sx={{ mb: 3 }}>
+      <Box
+        sx={{
+          maxWidth: 800,
+          mx: 'auto',
+          p: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+        }}
+      >
+        <Typography variant="h4" component="h1" gutterBottom>
+          取引最終確認
+        </Typography>
+
+        <Alert severity="info" sx={{ mb: 3, width: '100%' }}>
           {error ||
-            '取引データが見つかりません。取引入力画面からやり直してください。'}
+            '確定対象の取引が選択されていません。取引検証画面から確定対象の取引を選択してください。'}
         </Alert>
-        <Button
-          variant="contained"
-          onClick={() => navigate(PATHS.TRANSACTION_INPUT)}
-        >
-          取引入力画面に戻る
-        </Button>
+
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button variant="outlined" onClick={() => navigate(PATHS.DASHBOARD)}>
+            ダッシュボードに戻る
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => navigate(PATHS.TRANSACTION_VERIFICATION)}
+          >
+            取引検証画面へ
+          </Button>
+        </Box>
       </Box>
     );
   }
 
   return (
-    <Box sx={{ maxWidth: 1200, mx: 'auto', p: 3 }}>
-      <Grid container spacing={3}>
-        {/* メインコンテンツ */}
-        <Grid item xs={12} md={8}>
-          <Typography variant="h4" component="h1" gutterBottom>
-            取引内容確認
-          </Typography>
+    <Box
+      sx={{
+        maxWidth: 1200,
+        mx: 'auto',
+        p: 3,
+        display: 'flex',
+        justifyContent: 'center',
+      }}
+    >
+      <Box
+        sx={{
+          width: '100%',
+          maxWidth: 1000,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="h1"
+          gutterBottom
+          sx={{ textAlign: 'center', mb: 3 }}
+        >
+          取引内容確認（最終確認）
+        </Typography>
 
-          <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
-            以下の内容で取引を作成します。内容をご確認ください。
-          </Typography>
+        <Typography
+          variant="body1"
+          color="text.secondary"
+          sx={{ mb: 3, textAlign: 'center' }}
+        >
+          以下の内容で取引を作成します。内容をご確認ください。
+        </Typography>
 
-          {error && (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              {error}
-            </Alert>
-          )}
+        {error && (
+          <Alert severity="error" sx={{ mb: 3, width: '100%' }}>
+            {error}
+          </Alert>
+        )}
 
-          {successMessage && (
-            <Alert severity="success" sx={{ mb: 3 }}>
-              {successMessage}
-            </Alert>
-          )}
+        {successMessage && (
+          <Alert severity="success" sx={{ mb: 3, width: '100%' }}>
+            {successMessage}
+          </Alert>
+        )}
 
-          <Card sx={{ mb: 3 }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6" sx={{ mr: 2 }}>
-                  取引タイプ
-                </Typography>
-                <Chip
-                  label={getTransactionTypeLabel(transactionData.type)}
-                  color={getTransactionTypeColor(transactionData.type)}
-                  size="medium"
-                />
-              </Box>
+        <Card sx={{ mb: 3, width: '100%', maxWidth: 800 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+              <Typography variant="h6" sx={{ mr: 2 }}>
+                取引タイプ
+              </Typography>
+              <Chip
+                label={getTransactionTypeLabel(transactionData.type)}
+                color={getTransactionTypeColor(transactionData.type)}
+                size="medium"
+              />
+            </Box>
 
-              <Divider sx={{ mb: 3 }} />
+            <Divider sx={{ mb: 3 }} />
 
-              <TableContainer component={Paper} variant="outlined">
-                <Table>
-                  <TableBody>
-                    {/* 振込元口座（振込・出金の場合） */}
-                    {(transactionData.type === TransactionType.TRANSFER ||
-                      transactionData.type === TransactionType.WITHDRAWAL) && (
-                      <TableRow>
-                        <TableCell
-                          component="th"
-                          scope="row"
-                          sx={{ fontWeight: 'bold', width: '200px' }}
-                        >
-                          {transactionData.type === TransactionType.TRANSFER
-                            ? '振込元口座'
-                            : '出金元口座'}
-                        </TableCell>
-                        <TableCell>
-                          {transactionData.sourceAccount
-                            ? formatAccountDisplay(
-                                transactionData.sourceAccount
-                              )
-                            : '口座情報が見つかりません'}
-                        </TableCell>
-                      </TableRow>
-                    )}
+            <TableContainer component={Paper} variant="outlined">
+              <Table>
+                <TableBody>
+                  {/* 振込元口座（振込・出金の場合） */}
+                  {(transactionData.type === TransactionType.TRANSFER ||
+                    transactionData.type === TransactionType.WITHDRAWAL) && (
+                    <TableRow>
+                      <TableCell
+                        component="th"
+                        scope="row"
+                        sx={{ fontWeight: 'bold', width: '200px' }}
+                      >
+                        {transactionData.type === TransactionType.TRANSFER
+                          ? '振込元口座'
+                          : '出金元口座'}
+                      </TableCell>
+                      <TableCell>
+                        {transactionData.sourceAccount
+                          ? formatAccountDisplay(transactionData.sourceAccount)
+                          : '口座情報が見つかりません'}
+                      </TableCell>
+                    </TableRow>
+                  )}
 
-                    {/* 振込先口座（振込・入金の場合） */}
-                    {(transactionData.type === TransactionType.TRANSFER ||
-                      transactionData.type === TransactionType.DEPOSIT) && (
-                      <TableRow>
-                        <TableCell
-                          component="th"
-                          scope="row"
-                          sx={{ fontWeight: 'bold' }}
-                        >
-                          {transactionData.type === TransactionType.TRANSFER
-                            ? '振込先口座'
-                            : '入金先口座'}
-                        </TableCell>
-                        <TableCell>
-                          {transactionData.destinationAccount
-                            ? formatAccountDisplay(
-                                transactionData.destinationAccount
-                              )
-                            : '口座情報が見つかりません'}
-                        </TableCell>
-                      </TableRow>
-                    )}
-
-                    {/* 金額 */}
+                  {/* 振込先口座（振込・入金の場合） */}
+                  {(transactionData.type === TransactionType.TRANSFER ||
+                    transactionData.type === TransactionType.DEPOSIT) && (
                     <TableRow>
                       <TableCell
                         component="th"
                         scope="row"
                         sx={{ fontWeight: 'bold' }}
                       >
-                        金額
+                        {transactionData.type === TransactionType.TRANSFER
+                          ? '振込先口座'
+                          : '入金先口座'}
                       </TableCell>
                       <TableCell>
-                        <Typography variant="h6" color="primary">
-                          ¥{transactionData.amount.toLocaleString()}
-                        </Typography>
+                        {transactionData.destinationAccount
+                          ? formatAccountDisplay(
+                              transactionData.destinationAccount
+                            )
+                          : '口座情報が見つかりません'}
                       </TableCell>
                     </TableRow>
+                  )}
 
-                    {/* 取引日 */}
-                    <TableRow>
-                      <TableCell
-                        component="th"
-                        scope="row"
-                        sx={{ fontWeight: 'bold' }}
+                  {/* 金額 */}
+                  <TableRow>
+                    <TableCell
+                      component="th"
+                      scope="row"
+                      sx={{ fontWeight: 'bold' }}
+                    >
+                      金額
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="h6" color="primary">
+                        ¥{transactionData.amount.toLocaleString()}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+
+                  {/* 取引日 */}
+                  <TableRow>
+                    <TableCell
+                      component="th"
+                      scope="row"
+                      sx={{ fontWeight: 'bold' }}
+                    >
+                      取引日
+                    </TableCell>
+                    <TableCell>
+                      {transactionData.transactionDate.toLocaleDateString(
+                        'ja-JP',
+                        {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          weekday: 'long',
+                        }
+                      )}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* 取引内容 */}
+                  <TableRow>
+                    <TableCell
+                      component="th"
+                      scope="row"
+                      sx={{ fontWeight: 'bold', verticalAlign: 'top' }}
+                    >
+                      取引内容
+                    </TableCell>
+                    <TableCell>
+                      <Typography
+                        component="pre"
+                        sx={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
                       >
-                        取引日
-                      </TableCell>
-                      <TableCell>
-                        {transactionData.transactionDate.toLocaleDateString(
-                          'ja-JP',
-                          {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                            weekday: 'long',
-                          }
-                        )}
-                      </TableCell>
-                    </TableRow>
+                        {transactionData.description}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
 
-                    {/* 取引内容 */}
-                    <TableRow>
-                      <TableCell
-                        component="th"
-                        scope="row"
-                        sx={{ fontWeight: 'bold', verticalAlign: 'top' }}
-                      >
-                        取引内容
-                      </TableCell>
-                      <TableCell>
-                        <Typography
-                          component="pre"
-                          sx={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
-                        >
-                          {transactionData.description}
-                        </Typography>
-                      </TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </CardContent>
-          </Card>
-
-          {/* アクションボタン */}
-          <Grid container spacing={2} justifyContent="center">
-            <Grid item>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={handleCancel}
-                disabled={submitting}
-                size="large"
-              >
-                キャンセル
-              </Button>
-            </Grid>
-            <Grid item>
-              <Button
-                variant="outlined"
-                onClick={handleModify}
-                disabled={submitting}
-                size="large"
-              >
-                修正
-              </Button>
-            </Grid>
-            <Grid item>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={handleConfirm}
-                disabled={submitting || !isTransitionAllowed}
-                size="large"
-              >
-                {submitting ? '処理中...' : '確認・取引作成'}
-              </Button>
-            </Grid>
+        {/* アクションボタン */}
+        <Grid container spacing={2} justifyContent="center">
+          <Grid item>
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={handleCancel}
+              disabled={submitting}
+              size="large"
+            >
+              キャンセル
+            </Button>
+          </Grid>
+          <Grid item>
+            <Button
+              variant="outlined"
+              onClick={handleModify}
+              disabled={submitting}
+              size="large"
+            >
+              修正
+            </Button>
+          </Grid>
+          <Grid item>
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={handleConfirm}
+              disabled={submitting || !isTransitionAllowed}
+              size="large"
+            >
+              {submitting
+                ? '処理中...'
+                : transactionData?.transactionId
+                  ? '取引確定'
+                  : '確認・取引作成'}
+            </Button>
           </Grid>
         </Grid>
 
-        {/* サイドバー - ワークフロー情報 */}
-        <Grid item xs={12} md={4}>
-          {progress && (
+        {/* ワークフロー情報 */}
+        {progress && (
+          <Box sx={{ mt: 3, width: '100%' }}>
             <WorkflowProgressIndicator
               progress={progress}
-              variant="vertical"
+              variant="compact"
               showActions={false}
             />
-          )}
+          </Box>
+        )}
 
-          {progress && (
+        {progress && (
+          <Box sx={{ mt: 2, width: '100%' }}>
             <WorkflowNavigation
               progress={progress}
               currentPath={location.pathname}
               onNavigate={path => navigateWithData(path)}
             />
-          )}
-        </Grid>
-      </Grid>
+          </Box>
+        )}
+      </Box>
 
       {/* キャンセル確認ダイアログ */}
       <Dialog
