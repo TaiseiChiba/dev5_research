@@ -167,7 +167,7 @@ const MainApplication: React.FC<MainApplicationProps> = ({
           <Card elevation={3} sx={{ mb: 4 }}>
             <CardContent sx={{ textAlign: 'center', py: 4 }}>
               <Typography variant="h4" gutterBottom color="primary">
-                金融系業務アプリケーションへようこそ
+                ゴブコパへようこそ
               </Typography>
               <Typography variant="h6" gutterBottom>
                 ログインが完了しました

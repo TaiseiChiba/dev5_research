@@ -14,12 +14,16 @@ import {
 } from '@mui/material';
 import { ErrorOutline, LockOutlined, HomeOutlined } from '@mui/icons-material';
 import { PATHS } from '../../constants/paths.js';
+import { usePageTitle } from '../../hooks/usePageTitle.js';
 
 /**
  * 404 - ページが見つからない
  */
 export const NotFoundError: React.FC = () => {
   const navigate = useNavigate();
+
+  // ページタイトル設定
+  usePageTitle();
 
   return (
     <Box
@@ -60,6 +64,9 @@ export const NotFoundError: React.FC = () => {
  */
 export const UnauthorizedError: React.FC = () => {
   const navigate = useNavigate();
+
+  // ページタイトル設定
+  usePageTitle();
 
   return (
     <Box
@@ -103,6 +110,9 @@ export const UnauthorizedError: React.FC = () => {
  */
 export const ServerError: React.FC = () => {
   const navigate = useNavigate();
+
+  // ページタイトル設定
+  usePageTitle();
 
   return (
     <Box

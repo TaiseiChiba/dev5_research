@@ -1,7 +1,7 @@
 {
-  "name": "financial-business-app",
+  "name": "gobkopa",
   "version": "1.0.0",
-  "description": "金融系業務アプリケーション - フロントエンド",
+  "description": "ゴブコパ - フロントエンド",
   "main": "index.js",
   "type": "module",
   "scripts": {

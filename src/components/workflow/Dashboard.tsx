@@ -28,6 +28,7 @@ import {
 } from '@mui/icons-material';
 import { UserSession, UserRole } from '../../types/auth.js';
 import { PATHS } from '../../constants/paths.js';
+import { usePageTitle } from '../../hooks/usePageTitle.js';
 
 interface DashboardProps {
   session: UserSession;
@@ -36,6 +37,9 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ session }) => {
   const navigate = useNavigate();
   const [expandedItems, setExpandedItems] = useState<number[]>([]);
+
+  // ページタイトル設定
+  usePageTitle();
 
   const handleExpandClick = (index: number) => {
     setExpandedItems(prev =>
