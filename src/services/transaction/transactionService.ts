@@ -235,12 +235,19 @@ export class TransactionService {
     if (criteria.type) {
       params.append('type', criteria.type);
     }
-    if (criteria.sourceAccountId) {
-      params.append('sourceAccountId', criteria.sourceAccountId);
+
+    // 口座検索：accountIdがある場合は優先、なければ個別指定
+    if (criteria.accountId) {
+      params.append('accountId', criteria.accountId);
+    } else {
+      if (criteria.sourceAccountId) {
+        params.append('sourceAccountId', criteria.sourceAccountId);
+      }
+      if (criteria.destinationAccountId) {
+        params.append('destinationAccountId', criteria.destinationAccountId);
+      }
     }
-    if (criteria.destinationAccountId) {
-      params.append('destinationAccountId', criteria.destinationAccountId);
-    }
+
     if (criteria.customerId) {
       params.append('customerId', criteria.customerId);
     }

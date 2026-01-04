@@ -422,8 +422,15 @@ router.put('/:id/cancel', async (req, res) => {
  */
 router.get('/history', async (req, res) => {
   try {
-    const { dateFrom, dateTo, type, sourceAccountId, destinationAccountId } =
-      req.query;
+    const {
+      dateFrom,
+      dateTo,
+      type,
+      sourceAccountId,
+      destinationAccountId,
+      accountId,
+      customerId,
+    } = req.query;
 
     const where: any = {
       status: 'CONFIRMED',
@@ -440,15 +447,52 @@ router.get('/history', async (req, res) => {
       }
     }
 
-    // その他のフィルター
+    // 取引種別フィルター（Prismaのenum値に合わせて大文字に変換）
     if (type) {
-      where.type = type;
+      where.transactionType = (type as string).toUpperCase();
     }
-    if (sourceAccountId) {
-      where.sourceAccountId = sourceAccountId;
+
+    // 口座検索：指定した口座が振込元または振込先のいずれかに含まれる取引
+    if (accountId) {
+      where.OR = [
+        { sourceAccountId: accountId as string },
+        { destinationAccountId: accountId as string },
+      ];
+    } else {
+      // 個別の口座指定（従来の動作を維持）
+      if (sourceAccountId) {
+        where.sourceAccountId = sourceAccountId as string;
+      }
+      if (destinationAccountId) {
+        where.destinationAccountId = destinationAccountId as string;
+      }
     }
-    if (destinationAccountId) {
-      where.destinationAccountId = destinationAccountId;
+
+    // 顧客IDによる検索（口座を通じて）
+    if (customerId) {
+      const customerAccounts = await prisma.account.findMany({
+        where: { customerId: customerId as string },
+        select: { accountId: true },
+      });
+
+      const accountIds = customerAccounts.map(acc => acc.accountId);
+
+      if (accountIds.length > 0) {
+        const customerAccountCondition = {
+          OR: [
+            { sourceAccountId: { in: accountIds } },
+            { destinationAccountId: { in: accountIds } },
+          ],
+        };
+
+        // 既存のOR条件がある場合は統合
+        if (where.OR) {
+          where.AND = [{ OR: where.OR }, customerAccountCondition];
+          delete where.OR;
+        } else {
+          where.OR = customerAccountCondition.OR;
+        }
+      }
     }
 
     const transactions = await prisma.transaction.findMany({
