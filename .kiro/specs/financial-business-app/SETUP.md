@@ -117,6 +117,15 @@ psql --version    # v14以上
 ## 1. リポジトリのクローン
 
 ```bash
+# Cドライブ直下に任意のディレクトリを作成
+git bashを開く
+
+cd  c:
+
+mkdir dev5_research
+
+cd dev5_research
+
 # リポジトリをクローン
 git clone git@github.com:TaiseiChiba/dev5_research.git
 
