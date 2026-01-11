@@ -42,7 +42,7 @@ import { generatePath, PATHS } from '../../constants/paths.js';
 interface FormData {
   customerId: string;
   accountType: AccountType;
-  initialBalance: number;
+  initialBalance: number | string; // 入力中は文字列も許可
 }
 
 interface FormErrors {
@@ -63,7 +63,7 @@ const AccountCreate: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
     customerId: '',
     accountType: AccountType.SAVINGS,
-    initialBalance: 0,
+    initialBalance: 1000, // 初期値を1000円に設定
   });
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(true);
@@ -163,14 +163,19 @@ const AccountCreate: React.FC = () => {
       newErrors.accountType = '口座種別は必須です。';
     }
 
-    // 初期残高の検証
-    if (formData.initialBalance < 0) {
-      newErrors.initialBalance = '初期残高は0以上である必要があります。';
+    // 初期残高の検証（1円以上必須）
+    const balance =
+      typeof formData.initialBalance === 'string'
+        ? parseFloat(formData.initialBalance)
+        : formData.initialBalance;
+
+    if (isNaN(balance) || balance < 1) {
+      newErrors.initialBalance = '初期残高は1円以上である必要があります。';
     }
 
     // 初期残高の上限チェック（例：1億円）
     const maxInitialBalance = 100000000;
-    if (formData.initialBalance > maxInitialBalance) {
+    if (!isNaN(balance) && balance > maxInitialBalance) {
       newErrors.initialBalance = `初期残高は${maxInitialBalance.toLocaleString()}円以下である必要があります。`;
     }
 
@@ -195,10 +200,15 @@ const AccountCreate: React.FC = () => {
     setSuccessMessage('');
 
     try {
+      const balance =
+        typeof formData.initialBalance === 'string'
+          ? parseFloat(formData.initialBalance)
+          : formData.initialBalance;
+
       const accountData: AccountData = {
         customerId: formData.customerId,
         accountType: formData.accountType,
-        initialBalance: formData.initialBalance,
+        initialBalance: balance,
       };
 
       const newAccount = await accountService.openAccount(accountData);
@@ -480,12 +490,19 @@ const AccountCreate: React.FC = () => {
                   label="初期残高"
                   type="number"
                   value={formData.initialBalance}
-                  onChange={e =>
-                    handleInputChange(
-                      'initialBalance',
-                      parseFloat(e.target.value) || 0
-                    )
-                  }
+                  onChange={e => {
+                    const value = e.target.value;
+                    // 空文字列の場合は空文字列のまま保持し、数値の場合のみparseFloat
+                    if (value === '') {
+                      handleInputChange('initialBalance', '');
+                    } else {
+                      const numValue = parseFloat(value);
+                      // NaNでない場合のみ設定、NaNの場合は前の値を保持
+                      if (!isNaN(numValue)) {
+                        handleInputChange('initialBalance', numValue);
+                      }
+                    }
+                  }}
                   error={!!errors.initialBalance}
                   helperText={errors.initialBalance}
                   disabled={saving}
@@ -495,23 +512,31 @@ const AccountCreate: React.FC = () => {
                     ),
                   }}
                   inputProps={{
-                    min: 0,
+                    min: 1, // 最小値を1円に設定
                     step: 1,
                   }}
                 />
               </Grid>
 
               {/* 初期残高のプレビュー */}
-              {formData.initialBalance > 0 && (
-                <Grid item xs={12}>
-                  <Alert severity="info">
-                    <Typography variant="body2">
-                      <strong>初期残高:</strong>{' '}
-                      {formatCurrency(formData.initialBalance)}
-                    </Typography>
-                  </Alert>
-                </Grid>
-              )}
+              {(() => {
+                const balance =
+                  typeof formData.initialBalance === 'string'
+                    ? parseFloat(formData.initialBalance)
+                    : formData.initialBalance;
+                return (
+                  !isNaN(balance) &&
+                  balance >= 1 && (
+                    <Grid item xs={12}>
+                      <Alert severity="info">
+                        <Typography variant="body2">
+                          <strong>初期残高:</strong> {formatCurrency(balance)}
+                        </Typography>
+                      </Alert>
+                    </Grid>
+                  )
+                );
+              })()}
             </Grid>
 
             {/* 注意事項 */}
@@ -524,7 +549,7 @@ const AccountCreate: React.FC = () => {
                   <br />
                   • 口座番号は自動的に割り当てられます
                   <br />
-                  • 初期残高は0円以上で設定してください
+                  • 初期残高は1円以上で設定してください
                   <br />
                   • 口座開設後は口座番号や名義人の変更はできません
                   <br />• 開設された口座は即座に有効になります

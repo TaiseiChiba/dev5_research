@@ -289,6 +289,15 @@ router.post('/', async (req, res) => {
       });
     }
 
+    // 初期残高の検証（1円以上必須）
+    const balance = initialBalance || 0;
+    if (balance < 1) {
+      return res.status(400).json({
+        success: false,
+        message: '初期残高は1円以上である必要があります。',
+      });
+    }
+
     // 顧客の存在確認
     const customer = await prisma.customer.findFirst({
       where: {
@@ -349,7 +358,7 @@ router.post('/', async (req, res) => {
         accountNumber,
         accountType: validAccountType,
         status: AccountStatus.ACTIVE,
-        balance: initialBalance || 0,
+        balance: balance, // 検証済みの初期残高を使用
       },
       include: {
         customer: {
