@@ -14,10 +14,10 @@
 | `SCR004-customer-detail.md`                | 顧客詳細画面   | `/customers/:customerId`           | ✅完了   |
 | `SCR005-customer-edit.md`                  | 顧客編集画面   | `/customers/:customerId/edit`      | ✅完了   |
 | `SCR006-customer-create.md`                | 顧客作成画面   | `/customers/create`                | ✅完了   |
-| `SCR007-account-list.md`                   | 口座一覧画面   | `/accounts/list`                   | 🚧進行中 |
-| `SCR008-account-detail.md`                 | 口座詳細画面   | `/accounts/:accountId`             | 🚧進行中 |
-| `SCR009-account-edit.md`                   | 口座編集画面   | `/accounts/:accountId/edit`        | 🚧進行中 |
-| `SCR010-account-create.md`                 | 口座作成画面   | `/accounts/create`                 | 🚧進行中 |
+| `SCR007-account-list.md`                   | 口座一覧画面   | `/accounts/list`                   | ✅完了   |
+| `SCR008-account-detail.md`                 | 口座詳細画面   | `/accounts/:accountId`             | ✅完了   |
+| `SCR009-account-edit.md`                   | 口座編集画面   | `/accounts/:accountId/edit`        | ✅完了   |
+| `SCR010-account-create.md`                 | 口座作成画面   | `/accounts/create`                 | ✅完了   |
 | `SCR011-transaction-input.md`              | 取引入力画面   | `/transactions/input`              | ✅完了   |
 | `SCR012-transaction-confirmation.md`       | 取引確認画面   | `/transactions/confirmation`       | ✅完了   |
 | `SCR013-transaction-verification.md`       | 取引検証画面   | `/transactions/verification`       | ✅完了   |
