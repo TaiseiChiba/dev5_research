@@ -305,14 +305,26 @@ export class TransactionService {
   ): Promise<BaseApiResponse> {
     await this.simulateApiDelay();
 
+    // フロントエンドのenum値をサーバー側のenum値にマッピング
+    const statusMapping: Record<string, string> = {
+      pending_verification: 'PENDING_VERIFICATION',
+      verification_complete: 'VERIFICATION_COMPLETE',
+      on_hold: 'ON_HOLD',
+      returned_for_correction: 'RETURNED_FOR_CORRECTION',
+      confirmed: 'CONFIRMED',
+      cancelled: 'CANCELLED',
+    };
+
+    const mappedStatus = statusMapping[newStatus] || newStatus;
+
     // 状態に応じて適切なAPIエンドポイントを呼び出し
-    switch (newStatus) {
-      case 'verification_complete':
-      case 'on_hold':
-      case 'returned_for_correction':
+    switch (mappedStatus) {
+      case 'VERIFICATION_COMPLETE':
+      case 'ON_HOLD':
+      case 'RETURNED_FOR_CORRECTION':
         // 検証系の状態変更
         return this.verifyTransaction(transactionId, {
-          action: this.mapStatusToAction(newStatus) as
+          action: this.mapStatusToAction(mappedStatus) as
             | 'approve'
             | 'hold'
             | 'return',
@@ -320,7 +332,7 @@ export class TransactionService {
           comments,
         });
 
-      case 'confirmed':
+      case 'CONFIRMED':
         // 取引確定
         const confirmResult = await this.confirmTransaction(
           transactionId,
@@ -332,7 +344,7 @@ export class TransactionService {
           timestamp: new Date().toISOString(),
         };
 
-      case 'cancelled':
+      case 'CANCELLED':
         // 取引取消
         return this.cancelTransaction(transactionId);
 
@@ -350,8 +362,11 @@ export class TransactionService {
    */
   private mapStatusToAction(status: string): 'approve' | 'hold' | 'return' {
     const statusActionMap: Record<string, 'approve' | 'hold' | 'return'> = {
+      VERIFICATION_COMPLETE: 'approve',
       verification_complete: 'approve',
+      ON_HOLD: 'hold',
       on_hold: 'hold',
+      RETURNED_FOR_CORRECTION: 'return',
       returned_for_correction: 'return',
     };
     return statusActionMap[status] || 'approve';
@@ -361,18 +376,35 @@ export class TransactionService {
    * APIレスポンスをフロントエンド用のTransaction型に変換
    */
   private convertApiTransaction(apiTransaction: any): Transaction {
+    // Prismaのenum値をTypeScriptのenum値にマッピング
+    const statusMapping: Record<string, string> = {
+      PENDING_VERIFICATION: 'pending_verification',
+      VERIFICATION_COMPLETE: 'verification_complete',
+      ON_HOLD: 'on_hold',
+      RETURNED_FOR_CORRECTION: 'returned_for_correction',
+      CONFIRMED: 'confirmed',
+      CANCELLED: 'cancelled',
+    };
+
+    const typeMapping: Record<string, string> = {
+      TRANSFER: 'transfer',
+      DEPOSIT: 'deposit',
+      WITHDRAWAL: 'withdrawal',
+    };
+
     return {
       transactionId: apiTransaction.transactionId,
-      type: (
-        apiTransaction.transactionType ||
-        apiTransaction.type ||
-        'transfer'
-      ).toLowerCase(),
+      type:
+        typeMapping[apiTransaction.transactionType] ||
+        typeMapping[apiTransaction.type] ||
+        (apiTransaction.type || 'transfer').toLowerCase(),
       sourceAccountId: apiTransaction.sourceAccountId,
       destinationAccountId: apiTransaction.destinationAccountId,
       amount: parseFloat(apiTransaction.amount),
       description: apiTransaction.description,
-      status: (apiTransaction.status || 'pending_verification').toLowerCase(),
+      status:
+        statusMapping[apiTransaction.status] ||
+        (apiTransaction.status || 'pending_verification').toLowerCase(),
       createdBy: apiTransaction.createdBy,
       verifiedBy: apiTransaction.verifiedBy,
       confirmedBy: apiTransaction.confirmedBy,

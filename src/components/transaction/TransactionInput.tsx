@@ -41,6 +41,10 @@ import {
   debounce,
   ValidationErrors,
 } from '../../utils/transactionValidation.js';
+import { useTransactionTransition } from '../../hooks/useScreenTransition.js';
+import { useNavigation } from '../../contexts/NavigationContext.js';
+import { useTransactionWorkflowGuard } from '../../hooks/useWorkflowGuard.js';
+import { WorkflowProgressIndicator } from '../workflow/WorkflowProgressIndicator.js';
 
 interface TransactionInputProps {
   session?: { userId: string; userRole: string };
@@ -77,6 +81,13 @@ interface TransactionConfirmationData {
 const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { navigateWithData, setBreadcrumbs, getNavigationData } =
+    useNavigation();
+
+  // ワークフロー制御
+  const { progress, isTransitionAllowed, blockReason } =
+    useTransactionWorkflowGuard();
+
   const transactionService =
     ServiceFactory.getInstance().getTransactionService();
   const accountService = ServiceFactory.getInstance().getAccountService();
@@ -84,7 +95,22 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
 
   // フォームデータの初期化（確認画面からの戻りデータを考慮）
   const [formData, setFormData] = useState<FormData>(() => {
-    // location.stateから戻りデータを取得
+    // NavigationContextから戻りデータを取得
+    const navigationData = getNavigationData<TransactionConfirmationData>();
+    if (navigationData) {
+      return {
+        type: navigationData.type as TransactionType,
+        sourceAccountId: navigationData.sourceAccountId || '',
+        destinationAccountId: navigationData.destinationAccountId || '',
+        amount: navigationData.amount.toString(),
+        description: navigationData.description,
+        transactionDate: new Date(navigationData.transactionDate || new Date())
+          .toISOString()
+          .split('T')[0],
+      };
+    }
+
+    // location.stateからの戻りデータ（従来の方法）
     const stateData = location.state as {
       transactionData?: TransactionConfirmationData;
     };
@@ -214,6 +240,14 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
     loadAccounts();
   }, [accountService, customerService]);
 
+  // パンくずナビゲーション設定
+  useEffect(() => {
+    setBreadcrumbs([
+      { label: 'ダッシュボード', path: PATHS.DASHBOARD },
+      { label: '取引入力', isActive: true },
+    ]);
+  }, [setBreadcrumbs]);
+
   // フォーム入力ハンドラー
   const handleInputChange = (field: keyof FormData, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -285,12 +319,12 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
         transactionDate: new Date(formData.transactionDate),
       };
 
+      console.log('=== TransactionInput データ送信開始 ===');
+      console.log('formData:', formData);
       console.log('Navigating to confirmation with data:', transactionData);
 
       // 確認画面に遷移（データを引き継ぎ）
-      navigate(PATHS.TRANSACTION_CONFIRMATION, {
-        state: { transactionData },
-      });
+      navigateWithData(PATHS.TRANSACTION_CONFIRMATION, transactionData);
     } catch (error) {
       console.error('データ準備エラー:', error);
       setErrors({
@@ -343,247 +377,299 @@ const TransactionInput: React.FC<TransactionInputProps> = ({ session }) => {
   }
 
   return (
-    <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        取引入力
-      </Typography>
+    <Box
+      sx={{
+        maxWidth: 1200,
+        mx: 'auto',
+        p: 3,
+        display: 'flex',
+        justifyContent: 'center',
+      }}
+    >
+      <Box
+        sx={{
+          width: '100%',
+          maxWidth: 800,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+        }}
+      >
+        <Typography
+          variant="h4"
+          component="h1"
+          gutterBottom
+          sx={{ textAlign: 'center', mb: 3 }}
+        >
+          取引入力
+        </Typography>
 
-      {errors.general && (
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {errors.general}
-        </Alert>
-      )}
+        {/* ワークフロー制御の警告 */}
+        {!isTransitionAllowed && blockReason && (
+          <Alert severity="warning" sx={{ mb: 3, width: '100%' }}>
+            {blockReason}
+          </Alert>
+        )}
 
-      {successMessage && (
-        <Alert severity="success" sx={{ mb: 3 }}>
-          {successMessage}
-        </Alert>
-      )}
+        {errors.general && (
+          <Alert severity="error" sx={{ mb: 3, width: '100%' }}>
+            {errors.general}
+          </Alert>
+        )}
 
-      <Card>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
-            <Grid container spacing={3}>
-              {/* 取引タイプ選択 */}
-              <Grid item xs={12}>
-                <FormControl fullWidth error={!!errors.type}>
-                  <InputLabel>取引タイプ</InputLabel>
-                  <Select
-                    value={formData.type}
-                    label="取引タイプ"
+        {successMessage && (
+          <Alert severity="success" sx={{ mb: 3, width: '100%' }}>
+            {successMessage}
+          </Alert>
+        )}
+
+        <Card sx={{ width: '100%' }}>
+          <CardContent>
+            <form onSubmit={handleSubmit}>
+              <Grid container spacing={3}>
+                {/* 取引タイプ選択 */}
+                <Grid item xs={12}>
+                  <FormControl fullWidth error={!!errors.type}>
+                    <InputLabel>取引タイプ</InputLabel>
+                    <Select
+                      value={formData.type}
+                      label="取引タイプ"
+                      onChange={e =>
+                        handleTransactionTypeChange(
+                          e.target.value as TransactionType
+                        )
+                      }
+                    >
+                      <MenuItem value={TransactionType.TRANSFER}>振込</MenuItem>
+                      <MenuItem value={TransactionType.DEPOSIT}>入金</MenuItem>
+                      <MenuItem value={TransactionType.WITHDRAWAL}>
+                        出金
+                      </MenuItem>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <Divider />
+                  <Typography
+                    variant="h6"
+                    sx={{ mt: 2, mb: 2, textAlign: 'center' }}
+                  >
+                    {getTransactionTypeLabel(formData.type)}取引の詳細
+                  </Typography>
+                </Grid>
+
+                {/* 振込元口座（振込・出金の場合） */}
+                {(formData.type === TransactionType.TRANSFER ||
+                  formData.type === TransactionType.WITHDRAWAL) && (
+                  <Grid item xs={12}>
+                    <Autocomplete
+                      options={getAccountOptions(formData.destinationAccountId)}
+                      getOptionLabel={option => option.label}
+                      value={
+                        getAccountOptions().find(
+                          opt => opt.value === formData.sourceAccountId
+                        ) || null
+                      }
+                      onChange={(_, newValue) => {
+                        handleInputChange(
+                          'sourceAccountId',
+                          newValue?.value || ''
+                        );
+                      }}
+                      renderInput={params => (
+                        <TextField
+                          {...params}
+                          label={
+                            formData.type === TransactionType.TRANSFER
+                              ? '振込元口座'
+                              : '出金元口座'
+                          }
+                          error={!!errors.sourceAccountId}
+                          helperText={errors.sourceAccountId}
+                          required
+                        />
+                      )}
+                      isOptionEqualToValue={(option, value) =>
+                        option.value === value.value
+                      }
+                    />
+                  </Grid>
+                )}
+
+                {/* 振込先口座（振込・入金の場合） */}
+                {(formData.type === TransactionType.TRANSFER ||
+                  formData.type === TransactionType.DEPOSIT) && (
+                  <Grid item xs={12}>
+                    <Autocomplete
+                      options={getAccountOptions(formData.sourceAccountId)}
+                      getOptionLabel={option => option.label}
+                      value={
+                        getAccountOptions().find(
+                          opt => opt.value === formData.destinationAccountId
+                        ) || null
+                      }
+                      onChange={(_, newValue) => {
+                        handleInputChange(
+                          'destinationAccountId',
+                          newValue?.value || ''
+                        );
+                      }}
+                      renderInput={params => (
+                        <TextField
+                          {...params}
+                          label={
+                            formData.type === TransactionType.TRANSFER
+                              ? '振込先口座'
+                              : '入金先口座'
+                          }
+                          error={!!errors.destinationAccountId}
+                          helperText={errors.destinationAccountId}
+                          required
+                        />
+                      )}
+                      isOptionEqualToValue={(option, value) =>
+                        option.value === value.value
+                      }
+                    />
+                  </Grid>
+                )}
+
+                {/* 金額 */}
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="金額"
+                    type="number"
+                    value={formData.amount}
+                    onChange={e => handleInputChange('amount', e.target.value)}
+                    error={!!(errors.amount || realTimeErrors.amount)}
+                    helperText={
+                      errors.amount ||
+                      realTimeErrors.amount ||
+                      '1円以上1,000万円以下で入力してください'
+                    }
+                    required
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">¥</InputAdornment>
+                      ),
+                    }}
+                    inputProps={{
+                      min: 1,
+                      max: 10000000,
+                      step: 1,
+                    }}
+                  />
+                </Grid>
+
+                {/* 取引日 */}
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="取引日"
+                    type="date"
+                    value={formData.transactionDate}
                     onChange={e =>
-                      handleTransactionTypeChange(
-                        e.target.value as TransactionType
+                      handleInputChange('transactionDate', e.target.value)
+                    }
+                    error={
+                      !!(
+                        errors.transactionDate || realTimeErrors.transactionDate
                       )
                     }
-                  >
-                    <MenuItem value={TransactionType.TRANSFER}>振込</MenuItem>
-                    <MenuItem value={TransactionType.DEPOSIT}>入金</MenuItem>
-                    <MenuItem value={TransactionType.WITHDRAWAL}>出金</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid item xs={12}>
-                <Divider />
-                <Typography variant="h6" sx={{ mt: 2, mb: 2 }}>
-                  {getTransactionTypeLabel(formData.type)}取引の詳細
-                </Typography>
-              </Grid>
-
-              {/* 振込元口座（振込・出金の場合） */}
-              {(formData.type === TransactionType.TRANSFER ||
-                formData.type === TransactionType.WITHDRAWAL) && (
-                <Grid item xs={12}>
-                  <Autocomplete
-                    options={getAccountOptions(formData.destinationAccountId)}
-                    getOptionLabel={option => option.label}
-                    value={
-                      getAccountOptions().find(
-                        opt => opt.value === formData.sourceAccountId
-                      ) || null
+                    helperText={
+                      errors.transactionDate ||
+                      realTimeErrors.transactionDate ||
+                      '営業日（平日・祝日以外）を選択してください'
                     }
-                    onChange={(_, newValue) => {
-                      handleInputChange(
-                        'sourceAccountId',
-                        newValue?.value || ''
-                      );
+                    required
+                    InputLabelProps={{
+                      shrink: true,
                     }}
-                    renderInput={params => (
-                      <TextField
-                        {...params}
-                        label={
-                          formData.type === TransactionType.TRANSFER
-                            ? '振込元口座'
-                            : '出金元口座'
-                        }
-                        error={!!errors.sourceAccountId}
-                        helperText={errors.sourceAccountId}
-                        required
-                      />
-                    )}
-                    isOptionEqualToValue={(option, value) =>
-                      option.value === value.value
-                    }
+                    inputProps={{
+                      min: new Date().toISOString().split('T')[0],
+                    }}
                   />
                 </Grid>
-              )}
 
-              {/* 振込先口座（振込・入金の場合） */}
-              {(formData.type === TransactionType.TRANSFER ||
-                formData.type === TransactionType.DEPOSIT) && (
+                {/* 取引内容 */}
                 <Grid item xs={12}>
-                  <Autocomplete
-                    options={getAccountOptions(formData.sourceAccountId)}
-                    getOptionLabel={option => option.label}
-                    value={
-                      getAccountOptions().find(
-                        opt => opt.value === formData.destinationAccountId
-                      ) || null
+                  <TextField
+                    fullWidth
+                    label="取引内容"
+                    multiline
+                    rows={3}
+                    value={formData.description}
+                    onChange={e =>
+                      handleInputChange('description', e.target.value)
                     }
-                    onChange={(_, newValue) => {
-                      handleInputChange(
-                        'destinationAccountId',
-                        newValue?.value || ''
-                      );
+                    error={!!(errors.description || realTimeErrors.description)}
+                    helperText={
+                      errors.description ||
+                      realTimeErrors.description ||
+                      `${formData.description.length}/100文字`
+                    }
+                    required
+                    inputProps={{
+                      maxLength: 100,
                     }}
-                    renderInput={params => (
-                      <TextField
-                        {...params}
-                        label={
-                          formData.type === TransactionType.TRANSFER
-                            ? '振込先口座'
-                            : '入金先口座'
-                        }
-                        error={!!errors.destinationAccountId}
-                        helperText={errors.destinationAccountId}
-                        required
-                      />
-                    )}
-                    isOptionEqualToValue={(option, value) =>
-                      option.value === value.value
-                    }
                   />
+                  {/* 文字数カウンターの追加表示 */}
+                  <FormHelperText
+                    sx={{
+                      textAlign: 'right',
+                      color:
+                        formData.description.length > 80
+                          ? 'warning.main'
+                          : 'text.secondary',
+                    }}
+                  >
+                    {formData.description.length}/100文字
+                  </FormHelperText>
                 </Grid>
-              )}
 
-              {/* 金額 */}
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="金額"
-                  type="number"
-                  value={formData.amount}
-                  onChange={e => handleInputChange('amount', e.target.value)}
-                  error={!!(errors.amount || realTimeErrors.amount)}
-                  helperText={
-                    errors.amount ||
-                    realTimeErrors.amount ||
-                    '1円以上1,000万円以下で入力してください'
-                  }
-                  required
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">¥</InputAdornment>
-                    ),
-                  }}
-                  inputProps={{
-                    min: 1,
-                    max: 10000000,
-                    step: 1,
-                  }}
-                />
-              </Grid>
-
-              {/* 取引日 */}
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="取引日"
-                  type="date"
-                  value={formData.transactionDate}
-                  onChange={e =>
-                    handleInputChange('transactionDate', e.target.value)
-                  }
-                  error={
-                    !!(errors.transactionDate || realTimeErrors.transactionDate)
-                  }
-                  helperText={
-                    errors.transactionDate ||
-                    realTimeErrors.transactionDate ||
-                    '営業日（平日・祝日以外）を選択してください'
-                  }
-                  required
-                  InputLabelProps={{
-                    shrink: true,
-                  }}
-                  inputProps={{
-                    min: new Date().toISOString().split('T')[0],
-                  }}
-                />
-              </Grid>
-
-              {/* 取引内容 */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="取引内容"
-                  multiline
-                  rows={3}
-                  value={formData.description}
-                  onChange={e =>
-                    handleInputChange('description', e.target.value)
-                  }
-                  error={!!(errors.description || realTimeErrors.description)}
-                  helperText={
-                    errors.description ||
-                    realTimeErrors.description ||
-                    `${formData.description.length}/100文字`
-                  }
-                  required
-                  inputProps={{
-                    maxLength: 100,
-                  }}
-                />
-                {/* 文字数カウンターの追加表示 */}
-                <FormHelperText
-                  sx={{
-                    textAlign: 'right',
-                    color:
-                      formData.description.length > 80
-                        ? 'warning.main'
-                        : 'text.secondary',
-                  }}
-                >
-                  {formData.description.length}/100文字
-                </FormHelperText>
-              </Grid>
-
-              {/* 送信ボタン */}
-              <Grid item xs={12}>
-                <Box
-                  sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}
-                >
-                  <Button
-                    variant="outlined"
-                    onClick={() => navigate(PATHS.TRANSACTIONS)}
-                    disabled={submitting}
+                {/* 送信ボタン */}
+                <Grid item xs={12}>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      gap: 2,
+                      justifyContent: 'center',
+                    }}
                   >
-                    キャンセル
-                  </Button>
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    disabled={submitting || accounts.length === 0}
-                  >
-                    {submitting ? '処理中...' : '確認画面へ'}
-                  </Button>
-                </Box>
+                    <Button
+                      variant="outlined"
+                      onClick={() => navigateWithData(PATHS.TRANSACTIONS)}
+                      disabled={submitting}
+                    >
+                      キャンセル
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={submitting || accounts.length === 0}
+                    >
+                      {submitting ? '処理中...' : '確認画面へ'}
+                    </Button>
+                  </Box>
+                </Grid>
               </Grid>
-            </Grid>
-          </form>
-        </CardContent>
-      </Card>
+            </form>
+          </CardContent>
+        </Card>
+
+        {/* ワークフロー情報 */}
+        {progress && (
+          <Box sx={{ mt: 3, width: '100%' }}>
+            <WorkflowProgressIndicator
+              progress={progress}
+              variant="compact"
+              showActions={false}
+            />
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 };

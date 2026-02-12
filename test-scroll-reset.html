@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>スクロール位置リセットテスト</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 20px;
+        font-family: Arial, sans-serif;
+      }
+      .content {
+        height: 200vh; /* 画面の2倍の高さ */
+        background: linear-gradient(to bottom, #f0f0f0, #d0d0d0);
+        padding: 20px;
+      }
+      .test-section {
+        margin: 50px 0;
+        padding: 20px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+      .scroll-indicator {
+        position: fixed;
+        top: 10px;
+        right: 10px;
+        background: #007bff;
+        color: white;
+        padding: 10px;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+      .navigation-test {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+      button {
+        margin: 5px;
+        padding: 10px 15px;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="scroll-indicator" id="scrollIndicator">スクロール位置: 0px</div>
+
+    <div class="content">
+      <h1>スクロール位置リセットテスト</h1>
+
+      <div class="test-section">
+        <h2>テスト手順</h2>
+        <ol>
+          <li>このページを下にスクロールしてください</li>
+          <li>アプリケーション（http://localhost:5174/）を開いてください</li>
+          <li>ログインして画面間を移動してください</li>
+          <li>
+            各画面遷移時にスクロール位置がトップにリセットされることを確認してください
+          </li>
+        </ol>
+      </div>
+
+      <div class="test-section">
+        <h2>確認ポイント</h2>
+        <ul>
+          <li>NavigationContextの navigateWithData() を使用した遷移</li>
+          <li>NavigationContextの goBack() を使用した戻る操作</li>
+          <li>通常のReact Router navigate() を使用した遷移</li>
+        </ul>
+      </div>
+
+      <div class="test-section">
+        <h2>実装内容</h2>
+        <p>以下の修正を行いました：</p>
+        <ul>
+          <li>
+            <strong>NavigationContext.tsx</strong>:
+            navigateWithData()とgoBack()にscrollTo(0,0)を追加
+          </li>
+          <li>
+            <strong>App.tsx</strong>:
+            ScrollToTopコンポーネントを追加してすべてのルート変更でスクロールリセット
+          </li>
+        </ul>
+      </div>
+
+      <div class="test-section" style="margin-top: 100vh">
+        <h2>ページ下部</h2>
+        <p>
+          ここまでスクロールしてから、アプリケーションで画面遷移をテストしてください。
+        </p>
+        <p>画面遷移後、スクロール位置がトップにリセットされるはずです。</p>
+      </div>
+    </div>
+
+    <div class="navigation-test">
+      <h3>アプリケーションテスト</h3>
+      <p>アプリケーションを開いてテストしてください：</p>
+      <button onclick="window.open('http://localhost:5174/', '_blank')">
+        アプリケーションを開く
+      </button>
+    </div>
+
+    <script>
+      // スクロール位置を表示
+      function updateScrollIndicator() {
+        const scrollY = window.scrollY;
+        document.getElementById('scrollIndicator').textContent =
+          `スクロール位置: ${scrollY}px`;
+      }
+
+      window.addEventListener('scroll', updateScrollIndicator);
+      updateScrollIndicator();
+    </script>
+  </body>
+</html>

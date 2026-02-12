@@ -32,7 +32,9 @@ import {
 import { Customer, CustomerType, CustomerData } from '../../types/customer';
 import { ContactInfo } from '../../types/common';
 import { ServiceFactory } from '../../services/common/serviceFactory';
-import { generatePath } from '../../constants/paths';
+import { generatePath, PATHS } from '../../constants/paths';
+import { useCustomerTransition } from '../../hooks/useScreenTransition.js';
+import { useNavigation } from '../../contexts/NavigationContext.js';
 
 interface FormData {
   name: string;
@@ -57,6 +59,8 @@ interface FormErrors {
 const CustomerEdit: React.FC = () => {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
+  const { navigateWithData, setBreadcrumbs } = useNavigation();
+  const { transitionData: customerData } = useCustomerTransition();
 
   // 状態管理
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -81,9 +85,46 @@ const CustomerEdit: React.FC = () => {
   // 初期データ読み込み
   useEffect(() => {
     if (customerId) {
-      loadCustomerData();
+      // 遷移データがある場合はそれを使用、なければAPIから取得
+      if (customerData) {
+        setCustomer(customerData as Customer);
+        initializeFormData(customerData as Customer);
+        setLoading(false);
+      } else {
+        loadCustomerData();
+      }
     }
-  }, [customerId]);
+  }, [customerId, customerData]);
+
+  // パンくずナビゲーション設定
+  useEffect(() => {
+    if (customer) {
+      setBreadcrumbs([
+        { label: 'ダッシュボード', path: PATHS.DASHBOARD },
+        { label: '顧客一覧', path: PATHS.CUSTOMER_LIST },
+        {
+          label: customer.name,
+          path: generatePath.customerDetail(customer.customerId),
+        },
+        { label: '編集', isActive: true },
+      ]);
+    }
+  }, [customer, setBreadcrumbs]);
+
+  /**
+   * フォームデータを初期化
+   */
+  const initializeFormData = (customerData: Customer) => {
+    setFormData({
+      name: customerData.name,
+      phoneticName: customerData.phoneticName,
+      customerType: customerData.customerType,
+      email: customerData.contactInfo.email || '',
+      phone: customerData.contactInfo.phone || '',
+      postalCode: customerData.contactInfo.postalCode || '',
+      address: customerData.contactInfo.address || '',
+    });
+  };
 
   /**
    * 顧客データを読み込む
@@ -97,17 +138,7 @@ const CustomerEdit: React.FC = () => {
     try {
       const customerData = await customerService.getCustomer(customerId);
       setCustomer(customerData);
-
-      // フォームデータを初期化
-      setFormData({
-        name: customerData.name,
-        phoneticName: customerData.phoneticName,
-        customerType: customerData.customerType,
-        email: customerData.contactInfo.email || '',
-        phone: customerData.contactInfo.phone || '',
-        postalCode: customerData.contactInfo.postalCode || '',
-        address: customerData.contactInfo.address || '',
-      });
+      initializeFormData(customerData);
     } catch (err) {
       setError('顧客情報の読み込みに失敗しました。');
       console.error('顧客詳細読み込みエラー:', err);
@@ -220,7 +251,10 @@ const CustomerEdit: React.FC = () => {
 
       // 3秒後に詳細画面に戻る
       setTimeout(() => {
-        navigate(generatePath.customerDetail(customerId));
+        navigateWithData(
+          generatePath.customerDetail(customerId),
+          updatedCustomer
+        );
       }, 2000);
     } catch (err) {
       setError('顧客情報の更新に失敗しました。');
@@ -235,7 +269,7 @@ const CustomerEdit: React.FC = () => {
    */
   const handleCancel = () => {
     if (customerId) {
-      navigate(generatePath.customerDetail(customerId));
+      navigateWithData(generatePath.customerDetail(customerId), customer);
     }
   };
 
@@ -244,7 +278,7 @@ const CustomerEdit: React.FC = () => {
    */
   const handleBack = () => {
     if (customerId) {
-      navigate(generatePath.customerDetail(customerId));
+      navigateWithData(generatePath.customerDetail(customerId), customer);
     }
   };
 

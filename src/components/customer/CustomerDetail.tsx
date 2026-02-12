@@ -44,10 +44,17 @@ import { Customer, CustomerType } from '../../types/customer';
 import { Account, AccountType, AccountStatus } from '../../types/account';
 import { ServiceFactory } from '../../services/common/serviceFactory';
 import { generatePath, PATHS } from '../../constants/paths';
+import {
+  useCustomerTransition,
+  useScreenTransition,
+} from '../../hooks/useScreenTransition.js';
+import { useNavigation } from '../../contexts/NavigationContext.js';
 
 const CustomerDetail: React.FC = () => {
   const { customerId } = useParams<{ customerId: string }>();
   const navigate = useNavigate();
+  const { navigateWithData, setBreadcrumbs } = useNavigation();
+  const { navigateToEdit } = useCustomerTransition();
 
   // 状態管理
   const [customer, setCustomer] = useState<Customer | null>(null);
@@ -67,6 +74,17 @@ const CustomerDetail: React.FC = () => {
       loadCustomerData();
     }
   }, [customerId]);
+
+  // パンくずナビゲーション設定
+  useEffect(() => {
+    if (customer) {
+      setBreadcrumbs([
+        { label: 'ダッシュボード', path: PATHS.DASHBOARD },
+        { label: '顧客一覧', path: PATHS.CUSTOMER_LIST },
+        { label: `${customer.name}`, isActive: true },
+      ]);
+    }
+  }, [customer, setBreadcrumbs]);
 
   /**
    * 顧客データと関連口座を読み込む
@@ -194,8 +212,9 @@ const CustomerDetail: React.FC = () => {
    * 編集画面への遷移
    */
   const handleEdit = () => {
-    if (customerId) {
-      navigate(generatePath.customerEdit(customerId));
+    if (customerId && customer) {
+      // 顧客データを引き継いで編集画面に遷移
+      navigateToEdit(generatePath.customerEdit(customerId), customer);
     }
   };
 
@@ -203,14 +222,22 @@ const CustomerDetail: React.FC = () => {
    * 一覧画面への戻り
    */
   const handleBack = () => {
-    navigate(PATHS.CUSTOMER_LIST);
+    navigateWithData(PATHS.CUSTOMER_LIST);
   };
 
   /**
    * 口座詳細への遷移
    */
   const handleAccountDetail = (accountId: string) => {
-    navigate(generatePath.accountDetail(accountId));
+    const account = accounts.find(acc => acc.accountId === accountId);
+    if (account) {
+      // 口座データと顧客情報を引き継いで口座詳細に遷移
+      navigateWithData(generatePath.accountDetail(accountId), {
+        ...account,
+        customerName: customer?.name,
+        customerData: customer,
+      });
+    }
   };
 
   /**
@@ -245,8 +272,9 @@ const CustomerDetail: React.FC = () => {
 
       if (result.success) {
         // 削除成功 - 一覧画面に戻る
-        navigate(PATHS.CUSTOMER_LIST, {
-          state: { message: '顧客が正常に削除されました。' },
+        navigateWithData(PATHS.CUSTOMER_LIST, {
+          message: '顧客が正常に削除されました。',
+          messageType: 'success',
         });
       } else {
         // 削除失敗 - エラーメッセージを表示

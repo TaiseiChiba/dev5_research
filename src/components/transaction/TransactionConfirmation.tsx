@@ -36,6 +36,8 @@ import {
 import { AccountWithCustomer } from '../../types/account.js';
 import { ServiceFactory } from '../../services/common/serviceFactory.js';
 import { PATHS } from '../../constants/paths.js';
+import { useTransactionTransition } from '../../hooks/useScreenTransition.js';
+import { useNavigation } from '../../contexts/NavigationContext.js';
 
 interface TransactionConfirmationProps {
   session?: { userId: string; userRole: string };
@@ -57,6 +59,8 @@ const TransactionConfirmation: React.FC<TransactionConfirmationProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { navigateWithData, getNavigationData } = useNavigation();
+
   const transactionService =
     ServiceFactory.getInstance().getTransactionService();
   const accountService = ServiceFactory.getInstance().getAccountService();
@@ -77,19 +81,36 @@ const TransactionConfirmation: React.FC<TransactionConfirmationProps> = ({
       try {
         setLoading(true);
 
-        // location.stateから取引データを取得
+        console.log('=== TransactionConfirmation データ取得開始 ===');
+
+        // NavigationContextから直接データを取得
+        const navigationData = getNavigationData<TransactionInputData>();
+        console.log('navigationData from context:', navigationData);
+
+        // location.stateからも取得を試行
         const stateData = location.state as {
           transactionData?: TransactionInputData;
+          navigationData?: TransactionInputData;
         };
+        console.log('location.state:', location.state);
 
-        if (!stateData?.transactionData) {
+        // データの優先順位: NavigationContext > location.state
+        let inputData: TransactionInputData | undefined =
+          navigationData ||
+          stateData?.navigationData ||
+          stateData?.transactionData;
+
+        console.log('最終的な inputData:', inputData);
+
+        if (!inputData) {
+          console.error('取引データが見つかりません');
           setError(
             '取引データが見つかりません。取引入力画面からやり直してください。'
           );
           return;
         }
 
-        const inputData = stateData.transactionData;
+        console.log('Loading transaction data:', inputData);
 
         // 口座一覧と顧客一覧を取得
         const [accountList, customerList] = await Promise.all([
@@ -127,13 +148,19 @@ const TransactionConfirmation: React.FC<TransactionConfirmationProps> = ({
             )
           : undefined;
 
+        // transactionDateがstringの場合はDateに変換
+        const transactionDate =
+          inputData.transactionDate instanceof Date
+            ? inputData.transactionDate
+            : new Date(inputData.transactionDate);
+
         setTransactionData({
           type: inputData.type,
           sourceAccountId: inputData.sourceAccountId,
           destinationAccountId: inputData.destinationAccountId,
           amount: inputData.amount,
           description: inputData.description,
-          transactionDate: inputData.transactionDate || new Date(),
+          transactionDate,
           sourceAccount,
           destinationAccount,
         });
@@ -146,7 +173,7 @@ const TransactionConfirmation: React.FC<TransactionConfirmationProps> = ({
     };
 
     loadTransactionData();
-  }, [location.state, accountService, customerService]);
+  }, [getNavigationData, location.state, accountService, customerService]);
 
   // 取引タイプのラベル取得
   const getTransactionTypeLabel = (type: TransactionType): string => {
@@ -186,9 +213,7 @@ const TransactionConfirmation: React.FC<TransactionConfirmationProps> = ({
   // 修正ボタンのハンドラー
   const handleModify = () => {
     // 取引入力画面に戻る（データを引き継ぎ）
-    navigate(PATHS.TRANSACTION_INPUT, {
-      state: { transactionData },
-    });
+    navigateWithData(PATHS.TRANSACTION_INPUT, transactionData);
   };
 
   // キャンセルボタンのハンドラー
