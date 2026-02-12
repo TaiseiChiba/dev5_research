@@ -8,19 +8,18 @@ import { BaseSearchCriteria } from './common.js';
  * 口座タイプ
  */
 export enum AccountType {
-  SAVINGS = 'savings',
-  CHECKING = 'checking',
-  FIXED_DEPOSIT = 'fixed_deposit',
-  LOAN = 'loan',
+  SAVINGS = 'SAVINGS',
+  CHECKING = 'CHECKING',
+  FIXED_DEPOSIT = 'FIXED_DEPOSIT',
 }
 
 /**
  * 口座状態
  */
 export enum AccountStatus {
-  ACTIVE = 'active',
-  CLOSED = 'closed',
-  SUSPENDED = 'suspended',
+  ACTIVE = 'ACTIVE',
+  CLOSED = 'CLOSED',
+  SUSPENDED = 'SUSPENDED',
 }
 
 /**
@@ -35,6 +34,13 @@ export interface Account {
   balance: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+/**
+ * 顧客情報を含む口座情報（表示用）
+ */
+export interface AccountWithCustomer extends Account {
+  customerName: string;
 }
 
 /**

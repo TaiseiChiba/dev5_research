@@ -6,8 +6,8 @@
  * ユーザー役割
  */
 export enum UserRole {
-  GENERAL_STAFF = 'general_staff',
-  ADMINISTRATOR = 'administrator',
+  GENERAL_STAFF = 'GENERAL_STAFF',
+  ADMINISTRATOR = 'ADMINISTRATOR',
 }
 
 /**

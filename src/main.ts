@@ -2,7 +2,7 @@
  * 金融系業務アプリケーション - メインエントリーポイント
  */
 
-import { ServiceFactory } from './services/serviceFactory.js';
+import { ServiceFactory } from './services/common/serviceFactory.js';
 import { UserRole, LoginRequest, SwitchUserRequest } from './types/index.js';
 
 // アプリケーションの初期化

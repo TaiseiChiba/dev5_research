@@ -3,17 +3,21 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Box, AppBar, Toolbar, Typography, Container } from '@mui/material';
-import LoginScreen from './components/LoginScreen';
-import MainApplication from './components/MainApplication';
-import { ServiceFactory } from './services/serviceFactory';
-import { UserSession } from './types/auth';
+import { Box, Typography } from '@mui/material';
+import AppRouter from './components/common/AppRouter.js';
+import {
+  MessageProvider,
+  useNotification,
+} from './components/shared/MessageContext.js';
+import { ServiceFactory } from './services/common/serviceFactory.js';
+import { UserSession } from './types/auth.js';
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
   const [currentSession, setCurrentSession] = useState<UserSession | null>(
     null
   );
   const [isLoading, setIsLoading] = useState(true);
+  const notification = useNotification();
 
   useEffect(() => {
     initializeApp();
@@ -43,10 +47,28 @@ const App: React.FC = () => {
 
   const handleLoginSuccess = (session: UserSession) => {
     setCurrentSession(session);
+
+    // ログイン成功通知を表示
+    const roleText =
+      session.userRole === 'ADMINISTRATOR' ? '管理者' : '一般行員';
+    notification.success(
+      `ログインが完了しました。利用者: ${session.userId} (${roleText})`
+    );
   };
 
   const handleLogout = () => {
     setCurrentSession(null);
+  };
+
+  const handleUserSwitch = (session: UserSession) => {
+    setCurrentSession(session);
+
+    // 利用者切替成功通知を表示
+    const roleText =
+      session.userRole === 'ADMINISTRATOR' ? '管理者' : '一般行員';
+    notification.success(
+      `利用者を切り替えました。利用者: ${session.userId} (${roleText})`
+    );
   };
 
   if (isLoading) {
@@ -63,27 +85,20 @@ const App: React.FC = () => {
   }
 
   return (
-    <Box sx={{ flexGrow: 1 }}>
-      <AppBar position="static">
-        <Toolbar>
-          <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            金融系業務アプリケーション
-          </Typography>
-        </Toolbar>
-      </AppBar>
+    <AppRouter
+      session={currentSession}
+      onLoginSuccess={handleLoginSuccess}
+      onLogout={handleLogout}
+      onUserSwitch={handleUserSwitch}
+    />
+  );
+};
 
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        {currentSession ? (
-          <MainApplication
-            session={currentSession}
-            onLogout={handleLogout}
-            onUserSwitch={handleLoginSuccess}
-          />
-        ) : (
-          <LoginScreen onLoginSuccess={handleLoginSuccess} />
-        )}
-      </Container>
-    </Box>
+const App: React.FC = () => {
+  return (
+    <MessageProvider>
+      <AppContent />
+    </MessageProvider>
   );
 };
 

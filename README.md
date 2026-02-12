@@ -1,6 +1,6 @@
-# 金融系業務アプリケーション
+# ゴブコパ
 
-銀行業務向けの金融系業務アプリケーションのフロントエンド実装です。
+銀行業務向けのゴブコパのフロントエンド実装です。
 
 ## 技術スタック
 
@@ -92,6 +92,6 @@ npm run format
 
 詳細な要件仕様は以下のファイルを参照してください：
 
-- [要件定義書](.kiro/specs/financial-business-app/requirements.md)
-- [設計文書](.kiro/specs/financial-business-app/design.md)
-- [実装計画](.kiro/specs/financial-business-app/tasks.md)
+- [要件定義書](.kiro/specs/app-name-change/requirements.md)
+- [設計文書](.kiro/specs/app-name-change/design.md)
+- [実装計画](.kiro/specs/app-name-change/tasks.md)

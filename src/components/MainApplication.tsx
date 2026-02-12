@@ -29,10 +29,10 @@ import {
   HistoryOutlined,
   SecurityOutlined,
 } from '@mui/icons-material';
-import UserSwitchModal from './UserSwitchModal';
-import CustomerManagement from './CustomerManagement';
+import UserSwitchModal from './auth/UserSwitchModal';
+import CustomerManagement from './customer/CustomerManagement';
 import { UserSession, UserRole } from '../types/auth';
-import { ServiceFactory } from '../services/serviceFactory';
+import { ServiceFactory } from '../services/common/serviceFactory';
 
 interface MainApplicationProps {
   session: UserSession;
@@ -167,7 +167,7 @@ const MainApplication: React.FC<MainApplicationProps> = ({
           <Card elevation={3} sx={{ mb: 4 }}>
             <CardContent sx={{ textAlign: 'center', py: 4 }}>
               <Typography variant="h4" gutterBottom color="primary">
-                金融系業務アプリケーションへようこそ
+                ゴブコパへようこそ
               </Typography>
               <Typography variant="h6" gutterBottom>
                 ログインが完了しました

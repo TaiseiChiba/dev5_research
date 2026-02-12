@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>API統合テスト</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      .test-section {
+        margin: 20px 0;
+        padding: 15px;
+        border: 1px solid #ccc;
+      }
+      button {
+        margin: 5px;
+        padding: 10px;
+      }
+      .result {
+        margin: 10px 0;
+        padding: 10px;
+        background: #f5f5f5;
+      }
+      .success {
+        background: #d4edda;
+      }
+      .error {
+        background: #f8d7da;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>API統合テスト</h1>
+
+    <div class="test-section">
+      <h2>顧客作成テスト</h2>
+      <button onclick="testCreateCustomer()">顧客作成</button>
+      <div id="createResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>顧客一覧テスト</h2>
+      <button onclick="testListCustomers()">顧客一覧取得</button>
+      <div id="listResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+      <h2>顧客検索テスト</h2>
+      <input type="text" id="searchName" placeholder="顧客名で検索" />
+      <button onclick="testSearchCustomers()">検索</button>
+      <div id="searchResult" class="result"></div>
+    </div>
+
+    <script>
+      const API_BASE_URL = 'http://localhost:3001/api';
+
+      async function testCreateCustomer() {
+        const resultDiv = document.getElementById('createResult');
+        try {
+          const response = await fetch(`${API_BASE_URL}/customers`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              name: 'テスト顧客' + Date.now(),
+              phoneticName: 'テストコキャク' + Date.now(),
+              customerType: 'individual',
+              contactInfo: {
+                email: 'test@example.com',
+              },
+            }),
+          });
+
+          const data = await response.json();
+          resultDiv.className = 'result success';
+          resultDiv.innerHTML = `<strong>成功:</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<strong>エラー:</strong> ${error.message}`;
+        }
+      }
+
+      async function testListCustomers() {
+        const resultDiv = document.getElementById('listResult');
+        try {
+          const response = await fetch(`${API_BASE_URL}/customers/list`);
+          const data = await response.json();
+          resultDiv.className = 'result success';
+          resultDiv.innerHTML = `<strong>成功:</strong> ${data.count}件の顧客が見つかりました<br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<strong>エラー:</strong> ${error.message}`;
+        }
+      }
+
+      async function testSearchCustomers() {
+        const resultDiv = document.getElementById('searchResult');
+        const searchName = document.getElementById('searchName').value;
+        try {
+          const params = new URLSearchParams();
+          if (searchName) params.append('name', searchName);
+
+          const response = await fetch(
+            `${API_BASE_URL}/customers/search?${params.toString()}`
+          );
+          const data = await response.json();
+          resultDiv.className = 'result success';
+          resultDiv.innerHTML = `<strong>成功:</strong> ${data.count}件の顧客が見つかりました<br><pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } catch (error) {
+          resultDiv.className = 'result error';
+          resultDiv.innerHTML = `<strong>エラー:</strong> ${error.message}`;
+        }
+      }
+    </script>
+  </body>
+</html>

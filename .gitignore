@@ -64,3 +64,8 @@ jspm_packages/
 
 # Yarn Integrity file
 .yarn-integrity
+
+# Prisma
+/generated/prisma
+/prisma/migrations/
+.env
